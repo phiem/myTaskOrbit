@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskOrbit | Drag & Drop Productivity Board</title>
+  <meta name="description" content="A gorgeous, interactive Kanban board featuring drag-and-drop tasks, custom list columns, date-time deadlines, and integrated countdown timers with local persistence.">
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Dynamic Gradient Background Elements -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- App Shell -->
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <div class="logo-text">
+          <h1>TaskOrbit <span class="branding-by">by vibing Phiem</span></h1>
+          <p class="subtitle">Streamline your flow</p>
+        </div>
+      </div>
+
+      <!-- Board Stats Grid -->
+      <div class="stats-panel">
+        <div class="stat-card" id="stat-tasks">
+          <span class="stat-value">0</span>
+          <span class="stat-label">Total Tasks</span>
+        </div>
+        <div class="stat-card" id="stat-timers">
+          <span class="stat-value">0</span>
+          <span class="stat-label">Active Timers</span>
+        </div>
+        <div class="stat-card" id="stat-completed">
+          <span class="stat-value">0</span>
+          <span class="stat-label">Done</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="add-list-btn" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          New List
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Board Area -->
+    <main class="board-viewport">
+      <div class="board-canvas" id="board-canvas">
+        <!-- Lists (columns) will be dynamically rendered here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Task Detail Modal Dialog -->
+  <dialog id="task-modal" class="modal">
+    <form method="dialog" class="modal-form">
+      <div class="modal-header">
+        <h2>Task Details</h2>
+        <button type="button" class="btn-close" id="close-modal-btn" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="modal-task-id">
+        <input type="hidden" id="modal-list-id">
+
+        <div class="form-group">
+          <label for="modal-task-title">Title</label>
+          <input type="text" id="modal-task-title" required placeholder="What needs to be done?">
+        </div>
+
+        <div class="form-group">
+          <label for="modal-task-note">Notes</label>
+          <textarea id="modal-task-note" rows="4" placeholder="Add some details..."></textarea>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="modal-task-due">Due Date & Time</label>
+            <input type="datetime-local" id="modal-task-due">
+          </div>
+          
+          <div class="form-group">
+            <label>Timer Settings</label>
+            <div class="timer-setup-inputs">
+              <input type="number" id="modal-timer-min" min="0" max="999" placeholder="Min" aria-label="Minutes">
+              <span class="colon">:</span>
+              <input type="number" id="modal-timer-sec" min="0" max="59" placeholder="Sec" aria-label="Seconds">
+            </div>
+            <p class="field-hint">Leave blank or 0 to exclude timer.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="modal-delete-btn">Delete Task</button>
+        <button type="submit" class="btn btn-primary" id="modal-save-btn">Save Changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Alert Modal Dialog -->
+  <dialog id="alert-modal" class="modal">
+    <form method="dialog" class="modal-form">
+      <div class="modal-header">
+        <h2 id="alert-title">Notification</h2>
+      </div>
+      <div class="modal-body">
+        <p id="alert-message" style="font-size: 0.9rem; line-height: 1.5; color: var(--text-main);"></p>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="submit" class="btn btn-primary" id="alert-dismiss-btn">Dismiss</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Accessibility / Mobile Task Options Dropdown (Global popover) -->
+  <div id="task-menu-popover" popover class="task-menu-dropdown">
+    <ul class="task-menu-list">
+      <li>
+        <button class="menu-action" id="menu-edit-task">
+          <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          Edit Details
+        </button>
+      </li>
+      <li class="menu-divider">Move To List</li>
+      <li id="menu-move-destinations">
+        <!-- Rendered dynamically -->
+      </li>
+      <li class="menu-divider"></li>
+      <li>
+        <button class="menu-action action-danger" id="menu-delete-task">
+          <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Delete Task
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>
