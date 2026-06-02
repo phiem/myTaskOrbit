@@ -114,6 +114,30 @@ function initEventListeners() {
     addNewColumn();
   });
 
+  // Export session button
+  const exportBtn = document.getElementById('export-session-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      exportSession();
+    });
+  }
+
+  // Import session button & file input
+  const importBtn = document.getElementById('import-session-btn');
+  const importFileInput = document.getElementById('import-session-file');
+  if (importBtn && importFileInput) {
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+    importFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        importSession(e.target.files[0]);
+        // Reset the value so the same file can be selected again
+        e.target.value = '';
+      }
+    });
+  }
+
   // Modal Dialog setup
   const taskModal = document.getElementById('task-modal');
   const modalForm = taskModal.querySelector('.modal-form');
@@ -1305,4 +1329,94 @@ function getDragAfterColumnElement(container, x) {
       return closest;
     }
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Export current state/session to JSON file
+function exportSession() {
+  try {
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const fileName = `taskorbit_session_${dateStr}.json`;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed:", error);
+    showAlertModal("Export Failed ❌", "An error occurred while exporting the session.");
+  }
+}
+
+// Import state/session from JSON file
+function importSession(file) {
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      
+      // Simple validation: must have lists array
+      if (!importedData || !Array.isArray(importedData.lists)) {
+        throw new Error("Invalid session structure");
+      }
+      
+      // Sanitization: ensure each list and task has basic fields
+      importedData.lists.forEach(list => {
+        if (!list.id || !list.name || !Array.isArray(list.tasks)) {
+          throw new Error("Invalid list structure in session file");
+        }
+        list.tasks.forEach(task => {
+          if (!task.id || !task.title) {
+            throw new Error("Invalid task structure in session file");
+          }
+          if (!task.timer) {
+            task.timer = { duration: 0, remaining: 0, state: 'idle', endTimeStamp: 0 };
+          }
+        });
+      });
+
+      // Update state
+      state = importedData;
+      
+      // Handle elapsed time for active/running timers
+      state.lists.forEach(list => {
+        list.tasks.forEach(task => {
+          if (task.timer && task.timer.state === 'running') {
+            const now = Date.now();
+            const end = task.timer.endTimeStamp || 0;
+            if (end > now) {
+              task.timer.remaining = Math.max(0, Math.ceil((end - now) / 1000));
+            } else {
+              task.timer.remaining = 0;
+              task.timer.state = 'completed';
+            }
+          }
+          if (task.dueDate) {
+            const dueTime = new Date(task.dueDate).getTime();
+            if (Date.now() >= dueTime) {
+              task.dueDateAlerted = true;
+            } else {
+              task.dueDateAlerted = false;
+            }
+          }
+        });
+      });
+
+      saveState();
+      renderBoard();
+      updateStats();
+      showAlertModal("Session Imported Successfully 📂", "Your board session has been restored from the file.");
+    } catch (e) {
+      console.error("Import failed:", e);
+      showAlertModal("Import Failed ❌", "The selected file is not a valid TaskOrbit session file.");
+    }
+  };
+  reader.readAsText(file);
 }
