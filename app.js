@@ -16,6 +16,9 @@ let draggedColumnId = null;
 // Ticker interval
 let tickerInterval = null;
 
+// Repeating chime interval
+let chimeRepeatInterval = null;
+
 // Initialize Application
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
@@ -283,6 +286,14 @@ function initEventListeners() {
           renderBoard();
         }
       }
+    });
+  }
+
+  // Alert modal close listener to stop repeating timer chime
+  const alertModal = document.getElementById('alert-modal');
+  if (alertModal) {
+    alertModal.addEventListener('close', () => {
+      stopRepeatingChime();
     });
   }
 }
@@ -972,6 +983,7 @@ function startGlobalTicker() {
             stateChanged = true;
             needsBoardRender = true;
             playTimerCompletionSound();
+            startRepeatingChime();
             showAlertModal("Timer Completed ⏱️", `The timer for task "${task.title}" has finished!`);
           }
         }
@@ -1548,3 +1560,20 @@ function playTimerCompletionSound() {
   }
 }
 
+// Start repeating completion chime
+function startRepeatingChime() {
+  if (!state.soundEnabled) return;
+  if (chimeRepeatInterval) clearInterval(chimeRepeatInterval);
+  // Repeat playTimerCompletionSound every 2.5 seconds
+  chimeRepeatInterval = setInterval(() => {
+    playTimerCompletionSound();
+  }, 2500);
+}
+
+// Stop repeating completion chime
+function stopRepeatingChime() {
+  if (chimeRepeatInterval) {
+    clearInterval(chimeRepeatInterval);
+    chimeRepeatInterval = null;
+  }
+}
