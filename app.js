@@ -219,6 +219,55 @@ function initEventListeners() {
       renderBoard();
     }
   });
+
+  // Focus Overlay Minimizer Button Click
+  const minimizeBtn = document.getElementById('focus-btn-minimize');
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.focusOverlayMinimized = !state.focusOverlayMinimized;
+      saveState();
+      updateFocusOverlay();
+    });
+  }
+
+  // Focus Overlay Play/Pause Button Click
+  const focusToggleBtn = document.getElementById('focus-btn-toggle');
+  if (focusToggleBtn) {
+    focusToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.activeFocusTaskId) {
+        let focusTask = null;
+        state.lists.forEach(list => {
+          const t = list.tasks.find(tk => tk.id === state.activeFocusTaskId);
+          if (t) focusTask = t;
+        });
+        if (focusTask) {
+          toggleTimer(focusTask);
+          renderBoard();
+        }
+      }
+    });
+  }
+
+  // Focus Overlay Reset/Delete Button Click
+  const focusDeleteBtn = document.getElementById('focus-btn-delete');
+  if (focusDeleteBtn) {
+    focusDeleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.activeFocusTaskId) {
+        let focusTask = null;
+        state.lists.forEach(list => {
+          const t = list.tasks.find(tk => tk.id === state.activeFocusTaskId);
+          if (t) focusTask = t;
+        });
+        if (focusTask) {
+          deleteTimer(focusTask);
+          renderBoard();
+        }
+      }
+    });
+  }
 }
 
 // Helper: Generates unique ID
@@ -504,6 +553,9 @@ function renderBoard() {
     addNewColumn();
   });
   canvas.appendChild(placeholderEl);
+
+  // Update Focus Overlay dialog states in sync with board updates
+  updateFocusOverlay();
 }
 
 // Create Card Elements
@@ -848,22 +900,20 @@ function toggleTimer(task) {
     timer.endTimeStamp = 0;
   } else {
     // Play / Resume
+    state.activeFocusTaskId = task.id;
     
-    // Ensure only 1 active timer runs per lane (column)
+    // Ensure only 1 active timer runs globally in the entire application
     state.lists.forEach(list => {
-      const hasTask = list.tasks.some(t => t.id === task.id);
-      if (hasTask) {
-        list.tasks.forEach(t => {
-          if (t.id !== task.id && t.timer && t.timer.state === 'running') {
-            // Pause other running task
-            const now = Date.now();
-            const end = t.timer.endTimeStamp || now;
-            t.timer.remaining = Math.max(0, Math.ceil((end - now) / 1000));
-            t.timer.state = 'paused';
-            t.timer.endTimeStamp = 0;
-          }
-        });
-      }
+      list.tasks.forEach(t => {
+        if (t.id !== task.id && t.timer && t.timer.state === 'running') {
+          // Pause other running task
+          const now = Date.now();
+          const end = t.timer.endTimeStamp || now;
+          t.timer.remaining = Math.max(0, Math.ceil((end - now) / 1000));
+          t.timer.state = 'paused';
+          t.timer.endTimeStamp = 0;
+        }
+      });
     });
 
     if (timer.state === 'completed' || timer.remaining <= 0) {
@@ -888,6 +938,9 @@ function deleteTimer(task) {
       list.activeTimerTaskId = null;
     }
   });
+  if (state.activeFocusTaskId === task.id) {
+    state.activeFocusTaskId = null;
+  }
   saveState();
   updateStats();
 }
@@ -979,6 +1032,8 @@ function startGlobalTicker() {
     }
     if (needsBoardRender) {
       renderBoard();
+    } else {
+      updateFocusOverlay();
     }
   }, 1000);
 }
@@ -1030,6 +1085,9 @@ function deleteTask(taskId) {
       list.activeTimerTaskId = null;
     }
   });
+  if (state.activeFocusTaskId === taskId) {
+    state.activeFocusTaskId = null;
+  }
   saveState();
   renderBoard();
 }
@@ -1049,6 +1107,11 @@ function clearCompletedTasksInList(listId) {
   const activeTask = list.tasks.find(t => t.id === list.activeTimerTaskId);
   if (activeTask && activeTask.completed) {
     list.activeTimerTaskId = null;
+  }
+
+  const completedFocusTask = list.tasks.find(t => t.id === state.activeFocusTaskId && t.completed);
+  if (completedFocusTask) {
+    state.activeFocusTaskId = null;
   }
 
   list.tasks = list.tasks.filter(task => !task.completed);
@@ -1134,6 +1197,9 @@ function saveModalTask() {
       };
       if (list.activeTimerTaskId === task.id) {
         list.activeTimerTaskId = null;
+      }
+      if (state.activeFocusTaskId === task.id) {
+        state.activeFocusTaskId = null;
       }
     }
   }
@@ -1419,4 +1485,51 @@ function importSession(file) {
     }
   };
   reader.readAsText(file);
+}
+
+// Update the Focus Overlay dialog UI state
+function updateFocusOverlay() {
+  const overlay = document.getElementById('focus-overlay');
+  if (!overlay) return;
+
+  if (!state.activeFocusTaskId) {
+    overlay.classList.add('hidden');
+    return;
+  }
+
+  // Find the active focus task
+  let focusTask = null;
+  state.lists.forEach(list => {
+    const t = list.tasks.find(tk => tk.id === state.activeFocusTaskId);
+    if (t) focusTask = t;
+  });
+
+  if (!focusTask || !focusTask.timer || focusTask.timer.duration === 0 || focusTask.timer.state === 'idle') {
+    state.activeFocusTaskId = null;
+    overlay.classList.add('hidden');
+    saveState();
+    return;
+  }
+
+  // Update text & time
+  document.getElementById('focus-task-name').textContent = focusTask.title;
+  document.getElementById('focus-time').textContent = formatTime(focusTask.timer.remaining);
+
+  // Set classes
+  overlay.className = `focus-overlay state-${focusTask.timer.state}`;
+  if (state.focusOverlayMinimized) {
+    overlay.classList.add('minimized');
+  }
+
+  // Set toggle button icon
+  const toggleBtn = document.getElementById('focus-btn-toggle');
+  if (toggleBtn) {
+    if (focusTask.timer.state === 'running') {
+      toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+      toggleBtn.title = "Pause Timer";
+    } else {
+      toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+      toggleBtn.title = "Play Timer";
+    }
+  }
 }

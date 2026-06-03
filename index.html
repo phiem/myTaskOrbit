@@ -178,6 +178,25 @@
     </ul>
   </div>
 
+  <!-- Focus Overlay Dialog (Minimizable to bottom-right corner) -->
+  <div id="focus-overlay" class="focus-overlay hidden">
+    <div class="focus-card">
+      <button class="btn-focus-minimize" id="focus-btn-minimize" title="Minimize Focus Mode">
+        <svg class="minimize-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="10" y1="14" x2="3" y2="21"></line></svg>
+        <svg class="maximize-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+      </button>
+      <div class="focus-title">Focus Session</div>
+      <div class="focus-task-name" id="focus-task-name">Task Name</div>
+      <div class="focus-time" id="focus-time">00:00</div>
+      <div class="focus-controls">
+        <button class="focus-btn focus-btn-toggle" id="focus-btn-toggle" title="Pause Timer"></button>
+        <button class="focus-btn focus-btn-delete" id="focus-btn-delete" title="Reset/Delete Timer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main JavaScript File -->
   <script src="app.js"></script>
 </body>
