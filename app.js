@@ -476,65 +476,6 @@ function renderBoard() {
 
     canvas.appendChild(columnEl);
 
-    // Find active timer task for this column
-    let activeTimerTask = list.tasks.find(t => t.timer && t.timer.state === 'running');
-    if (!activeTimerTask && list.activeTimerTaskId) {
-      activeTimerTask = list.tasks.find(t => t.id === list.activeTimerTaskId && t.timer && t.timer.duration > 0);
-    }
-    if (!activeTimerTask) {
-      activeTimerTask = list.tasks.find(t => t.timer && t.timer.duration > 0 && (t.timer.state === 'paused' || t.timer.state === 'completed'));
-    }
-
-    if (activeTimerTask) {
-      list.activeTimerTaskId = activeTimerTask.id;
-      
-      const timerFooter = document.createElement('div');
-      timerFooter.className = `column-active-timer-footer state-${activeTimerTask.timer.state}`;
-
-      // Play/Pause icon depending on state
-      let actionIcon = '';
-      let toggleTitle = '';
-      if (activeTimerTask.timer.state === 'running') {
-        actionIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-        toggleTitle = 'Pause Timer';
-      } else {
-        actionIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
-        toggleTitle = 'Play Timer';
-      }
-
-      timerFooter.innerHTML = `
-        <div class="timer-footer-title" title="${escapeHtml(activeTimerTask.title)}">${escapeHtml(activeTimerTask.title)}</div>
-        <div class="timer-footer-controls">
-          <svg class="timer-clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          <span class="timer-footer-time">${formatTime(activeTimerTask.timer.remaining)}</span>
-          <div class="timer-footer-actions">
-            <button class="timer-footer-btn timer-footer-toggle" title="${toggleTitle}">
-              ${actionIcon}
-            </button>
-            <button class="timer-footer-btn timer-footer-delete" title="Delete/Reset Timer">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
-          </div>
-        </div>
-      `;
-
-      timerFooter.querySelector('.timer-footer-toggle').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleTimer(activeTimerTask);
-        renderBoard();
-      });
-
-      timerFooter.querySelector('.timer-footer-delete').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteTimer(activeTimerTask);
-        renderBoard();
-      });
-
-      columnEl.appendChild(timerFooter);
-    } else {
-      list.activeTimerTaskId = null;
-    }
-
     // Setup drag and drop events for list container
     setupContainerDragEvents(tasksContainer);
   });
@@ -1006,14 +947,6 @@ function startGlobalTicker() {
             }
           }
 
-          // Find footer timer UI element for this column and update
-          const columnEl = document.getElementById(list.id);
-          if (columnEl) {
-            const footerTimeText = columnEl.querySelector('.timer-footer-time');
-            if (footerTimeText) {
-              footerTimeText.textContent = formatTime(delta);
-            }
-          }
 
           if (delta <= 0) {
             task.timer.state = 'completed';
