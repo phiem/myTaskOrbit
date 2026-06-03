@@ -1613,4 +1613,32 @@ html, body {
   border-radius: 6px;
 }
 
+.next-task-timer-setup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.next-task-timer-setup input {
+  width: 42px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 0.2rem 0;
+  outline: none;
+}
+
+.next-task-timer-setup input:focus {
+  border-color: var(--accent-success);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.next-task-timer-setup span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
 

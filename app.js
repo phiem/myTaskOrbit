@@ -922,12 +922,113 @@ function formatTime(totalSeconds) {
 }
 
 // Helper to display a custom notification modal
-function showAlertModal(title, message) {
+function showAlertModal(title, message, taskContext = null) {
   const alertModal = document.getElementById('alert-modal');
   if (!alertModal) return;
 
   document.getElementById('alert-title').textContent = title;
   document.getElementById('alert-message').textContent = message;
+
+  // Render Up Next task section inside Alert Modal if context is provided
+  const nextTaskContainer = document.getElementById('alert-next-task-container');
+  if (nextTaskContainer) {
+    let nextTask = null;
+    if (taskContext) {
+      let activeList = null;
+      state.lists.forEach(list => {
+        if (list.tasks.some(tk => tk.id === taskContext.id)) {
+          activeList = list;
+        }
+      });
+
+      if (activeList) {
+        const incompleteTasks = activeList.tasks.filter(t => !t.completed);
+        const currentIdx = incompleteTasks.findIndex(t => t.id === taskContext.id);
+        if (currentIdx !== -1 && currentIdx + 1 < incompleteTasks.length) {
+          nextTask = incompleteTasks[currentIdx + 1];
+        }
+      }
+    }
+
+    if (nextTask) {
+      nextTaskContainer.style.display = 'flex';
+      const nextTitleEl = document.getElementById('alert-next-task-title');
+      if (nextTitleEl) {
+        nextTitleEl.textContent = nextTask.title;
+      }
+
+      const timerBtn = document.getElementById('alert-next-task-timer-btn');
+      const setupDiv = document.getElementById('alert-next-task-timer-setup');
+      
+      if (timerBtn && setupDiv) {
+        if (nextTask.timer && nextTask.timer.duration > 0) {
+          timerBtn.style.display = 'flex';
+          setupDiv.style.display = 'none';
+          
+          const timeSpan = document.getElementById('alert-next-task-timer-time');
+          if (timeSpan) {
+            timeSpan.textContent = formatTime(nextTask.timer.remaining);
+          }
+          
+          const newTimerBtn = timerBtn.cloneNode(true);
+          timerBtn.parentNode.replaceChild(newTimerBtn, timerBtn);
+          
+          newTimerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            alertModal.close(); // Dismisses modal & stops repeating chime!
+            toggleTimer(nextTask);
+            renderBoard();
+          });
+        } else {
+          timerBtn.style.display = 'none';
+          setupDiv.style.display = 'flex';
+          
+          const setBtn = setupDiv.querySelector('.alert-next-set-btn');
+          const minInput = setupDiv.querySelector('.alert-next-min');
+          const secInput = setupDiv.querySelector('.alert-next-sec');
+          
+          if (setBtn && minInput && secInput) {
+            const newSetBtn = setBtn.cloneNode(true);
+            setBtn.parentNode.replaceChild(newSetBtn, setBtn);
+            
+            const handleSet = (e) => {
+              e.stopPropagation();
+              const mins = parseInt(minInput.value) || 0;
+              const secs = parseInt(secInput.value) || 0;
+              const totalSecs = (mins * 60) + secs;
+              
+              if (totalSecs > 0) {
+                nextTask.timer = {
+                  duration: totalSecs,
+                  remaining: totalSecs,
+                  state: 'paused',
+                  endTimeStamp: 0
+                };
+                
+                state.lists.forEach(list => {
+                  if (list.tasks.some(t => t.id === nextTask.id)) {
+                    list.activeTimerTaskId = nextTask.id;
+                  }
+                });
+                
+                saveState();
+                
+                // Now that the timer is set, we immediately render the "play" button for them
+                // by calling the alert modal updater again with same context
+                showAlertModal(title, message, taskContext);
+              }
+            };
+            
+            newSetBtn.addEventListener('click', handleSet);
+            minInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
+            secInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
+          }
+        }
+      }
+    } else {
+      nextTaskContainer.style.display = 'none';
+    }
+  }
 
   alertModal.showModal();
 }
@@ -984,7 +1085,7 @@ function startGlobalTicker() {
             needsBoardRender = true;
             playTimerCompletionSound();
             startRepeatingChime();
-            showAlertModal("Timer Completed ⏱️", `The timer for task "${task.title}" has finished!`);
+            showAlertModal("Timer Completed ⏱️", `The timer for task "${task.title}" has finished!`, task);
           }
         }
       });
