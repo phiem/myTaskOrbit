@@ -1495,6 +1495,59 @@ function updateFocusOverlay() {
       toggleBtn.title = "Play Timer";
     }
   }
+
+  // Find next task in the same column
+  const nextTaskContainer = document.getElementById('focus-next-task-container');
+  if (nextTaskContainer) {
+    let activeList = null;
+    state.lists.forEach(list => {
+      if (list.tasks.some(tk => tk.id === state.activeFocusTaskId)) {
+        activeList = list;
+      }
+    });
+
+    let nextTask = null;
+    if (activeList) {
+      const incompleteTasks = activeList.tasks.filter(t => !t.completed);
+      const currentIdx = incompleteTasks.findIndex(t => t.id === state.activeFocusTaskId);
+      if (currentIdx !== -1 && currentIdx + 1 < incompleteTasks.length) {
+        nextTask = incompleteTasks[currentIdx + 1];
+      }
+    }
+
+    if (nextTask) {
+      nextTaskContainer.style.display = 'flex';
+      const nextTitleEl = document.getElementById('focus-next-task-title');
+      if (nextTitleEl) {
+        nextTitleEl.textContent = nextTask.title;
+      }
+
+      const timerBtn = document.getElementById('focus-next-task-timer-btn');
+      const noTimerSpan = document.getElementById('focus-next-task-no-timer');
+      if (timerBtn && noTimerSpan) {
+        if (nextTask.timer && nextTask.timer.duration > 0) {
+          timerBtn.style.display = 'flex';
+          noTimerSpan.style.display = 'none';
+          const timeSpan = document.getElementById('focus-next-task-timer-time');
+          if (timeSpan) {
+            timeSpan.textContent = formatTime(nextTask.timer.remaining);
+          }
+          const newTimerBtn = timerBtn.cloneNode(true);
+          timerBtn.parentNode.replaceChild(newTimerBtn, timerBtn);
+          newTimerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTimer(nextTask);
+            renderBoard();
+          });
+        } else {
+          timerBtn.style.display = 'none';
+          noTimerSpan.style.display = 'inline-block';
+        }
+      }
+    } else {
+      nextTaskContainer.style.display = 'none';
+    }
+  }
 }
 
 // Update UI toggle button and text based on state.soundEnabled
