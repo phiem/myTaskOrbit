@@ -775,6 +775,17 @@ function renderTimerComponent(wrapper, task) {
       renderTimerComponent(wrapper, task);
     });
 
+    // Click on timer text to edit duration inline
+    const timeTextSpan = badge.querySelector('.timer-text');
+    if (timeTextSpan) {
+      timeTextSpan.style.cursor = 'pointer';
+      timeTextSpan.title = 'Click to edit duration';
+      timeTextSpan.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renderTimerInlineInput(wrapper, task);
+      });
+    }
+
     wrapper.appendChild(badge);
   }
 }
@@ -786,10 +797,13 @@ function renderTimerInlineInput(wrapper, task) {
   const setupEl = document.createElement('div');
   setupEl.className = 'timer-setup-inline';
 
+  const existingMins = (task.timer && task.timer.duration > 0) ? Math.floor(task.timer.duration / 60) : 25;
+  const existingSecs = (task.timer && task.timer.duration > 0) ? (task.timer.duration % 60) : 0;
+
   setupEl.innerHTML = `
-    <input type="number" class="inline-time-in min" min="0" max="999" placeholder="MM" value="25">
+    <input type="number" class="inline-time-in min" min="0" max="999" placeholder="MM" value="${existingMins}">
     <span class="colon-divider">:</span>
-    <input type="number" class="inline-time-in sec" min="0" max="59" placeholder="SS" value="00">
+    <input type="number" class="inline-time-in sec" min="0" max="59" placeholder="SS" value="${String(existingSecs).padStart(2, '0')}">
     <button class="inline-save-btn">Set</button>
     <button class="inline-cancel-btn">×</button>
   `;
@@ -957,36 +971,17 @@ function showAlertModal(title, message, taskContext = null) {
         nextTitleEl.textContent = nextTask.title;
       }
 
+      const timerWrapper = document.getElementById('alert-next-task-timer-wrapper');
       const timerBtn = document.getElementById('alert-next-task-timer-btn');
+      const editBtn = document.getElementById('alert-next-task-edit-btn');
       const setupDiv = document.getElementById('alert-next-task-timer-setup');
       
-      if (timerBtn && setupDiv) {
-        if (nextTask.timer && nextTask.timer.duration > 0) {
-          timerBtn.style.display = 'flex';
-          setupDiv.style.display = 'none';
-          
-          const timeSpan = document.getElementById('alert-next-task-timer-time');
-          if (timeSpan) {
-            timeSpan.textContent = formatTime(nextTask.timer.remaining);
-          }
-          
-          const newTimerBtn = timerBtn.cloneNode(true);
-          timerBtn.parentNode.replaceChild(newTimerBtn, timerBtn);
-          
-          newTimerBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            alertModal.close(); // Dismisses modal & stops repeating chime!
-            toggleTimer(nextTask);
-            renderBoard();
-          });
-        } else {
-          timerBtn.style.display = 'none';
-          setupDiv.style.display = 'flex';
-          
-          const setBtn = setupDiv.querySelector('.alert-next-set-btn');
-          const minInput = setupDiv.querySelector('.alert-next-min');
-          const secInput = setupDiv.querySelector('.alert-next-sec');
-          
+      if (timerWrapper && timerBtn && editBtn && setupDiv) {
+        const minInput = setupDiv.querySelector('.alert-next-min');
+        const secInput = setupDiv.querySelector('.alert-next-sec');
+        const setBtn = setupDiv.querySelector('.alert-next-set-btn');
+
+        const bindSetAction = () => {
           if (setBtn && minInput && secInput) {
             const newSetBtn = setBtn.cloneNode(true);
             setBtn.parentNode.replaceChild(newSetBtn, setBtn);
@@ -1013,8 +1008,7 @@ function showAlertModal(title, message, taskContext = null) {
                 
                 saveState();
                 
-                // Now that the timer is set, we immediately render the "play" button for them
-                // by calling the alert modal updater again with same context
+                // Refresh modal view immediately to show Play button
                 showAlertModal(title, message, taskContext);
               }
             };
@@ -1023,6 +1017,49 @@ function showAlertModal(title, message, taskContext = null) {
             minInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
             secInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
           }
+        };
+
+        if (nextTask.timer && nextTask.timer.duration > 0) {
+          timerWrapper.style.display = 'flex';
+          setupDiv.style.display = 'none';
+          
+          const timeSpan = document.getElementById('alert-next-task-timer-time');
+          if (timeSpan) {
+            timeSpan.textContent = formatTime(nextTask.timer.remaining);
+          }
+          
+          // Bind Play Button
+          const newTimerBtn = timerBtn.cloneNode(true);
+          timerBtn.parentNode.replaceChild(newTimerBtn, timerBtn);
+          newTimerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            alertModal.close(); // Dismisses modal & stops repeating chime!
+            toggleTimer(nextTask);
+            renderBoard();
+          });
+
+          // Bind Edit Button
+          const newEditBtn = editBtn.cloneNode(true);
+          editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+          newEditBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            timerWrapper.style.display = 'none';
+            setupDiv.style.display = 'flex';
+            if (minInput && secInput) {
+              minInput.value = Math.floor(nextTask.timer.duration / 60);
+              secInput.value = nextTask.timer.duration % 60;
+              setTimeout(() => minInput.focus(), 50);
+            }
+            bindSetAction();
+          });
+        } else {
+          timerWrapper.style.display = 'none';
+          setupDiv.style.display = 'flex';
+          if (minInput && secInput) {
+            minInput.value = '25';
+            secInput.value = '00';
+          }
+          bindSetAction();
         }
       }
     } else {
@@ -1623,16 +1660,58 @@ function updateFocusOverlay() {
         nextTitleEl.textContent = nextTask.title;
       }
 
+      const timerWrapper = document.getElementById('focus-next-task-timer-wrapper');
       const timerBtn = document.getElementById('focus-next-task-timer-btn');
-      const noTimerSpan = document.getElementById('focus-next-task-no-timer');
-      if (timerBtn && noTimerSpan) {
+      const editBtn = document.getElementById('focus-next-task-edit-btn');
+      const setupDiv = document.getElementById('focus-next-task-timer-setup');
+      
+      if (timerWrapper && timerBtn && editBtn && setupDiv) {
+        const minInput = setupDiv.querySelector('.focus-next-min');
+        const secInput = setupDiv.querySelector('.focus-next-sec');
+        const setBtn = setupDiv.querySelector('.focus-next-set-btn');
+
+        const bindSetAction = () => {
+          if (setBtn && minInput && secInput) {
+            const newSetBtn = setBtn.cloneNode(true);
+            setBtn.parentNode.replaceChild(newSetBtn, setBtn);
+            
+            const handleSet = (e) => {
+              e.stopPropagation();
+              const mins = parseInt(minInput.value) || 0;
+              const secs = parseInt(secInput.value) || 0;
+              const totalSecs = (mins * 60) + secs;
+              if (totalSecs > 0) {
+                nextTask.timer = {
+                  duration: totalSecs,
+                  remaining: totalSecs,
+                  state: 'paused',
+                  endTimeStamp: 0
+                };
+                state.lists.forEach(list => {
+                  if (list.tasks.some(t => t.id === nextTask.id)) {
+                    list.activeTimerTaskId = nextTask.id;
+                  }
+                });
+                saveState();
+                renderBoard();
+              }
+            };
+            newSetBtn.addEventListener('click', handleSet);
+            minInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
+            secInput.onkeydown = (e) => { if (e.key === 'Enter') handleSet(e); };
+          }
+        };
+
         if (nextTask.timer && nextTask.timer.duration > 0) {
-          timerBtn.style.display = 'flex';
-          noTimerSpan.style.display = 'none';
+          timerWrapper.style.display = 'flex';
+          setupDiv.style.display = 'none';
+          
           const timeSpan = document.getElementById('focus-next-task-timer-time');
           if (timeSpan) {
             timeSpan.textContent = formatTime(nextTask.timer.remaining);
           }
+          
+          // Bind Play Button
           const newTimerBtn = timerBtn.cloneNode(true);
           timerBtn.parentNode.replaceChild(newTimerBtn, timerBtn);
           newTimerBtn.addEventListener('click', (e) => {
@@ -1640,9 +1719,29 @@ function updateFocusOverlay() {
             toggleTimer(nextTask);
             renderBoard();
           });
+
+          // Bind Edit Button
+          const newEditBtn = editBtn.cloneNode(true);
+          editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+          newEditBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            timerWrapper.style.display = 'none';
+            setupDiv.style.display = 'flex';
+            if (minInput && secInput) {
+              minInput.value = Math.floor(nextTask.timer.duration / 60);
+              secInput.value = nextTask.timer.duration % 60;
+              setTimeout(() => minInput.focus(), 50);
+            }
+            bindSetAction();
+          });
         } else {
-          timerBtn.style.display = 'none';
-          noTimerSpan.style.display = 'inline-block';
+          timerWrapper.style.display = 'none';
+          setupDiv.style.display = 'flex';
+          if (minInput && secInput) {
+            minInput.value = '25';
+            secInput.value = '00';
+          }
+          bindSetAction();
         }
       }
     } else {
