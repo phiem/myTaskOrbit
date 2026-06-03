@@ -20,6 +20,7 @@ let tickerInterval = null;
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
   initEventListeners();
+  updateSoundUI();
   startGlobalTicker();
   updateStats();
 });
@@ -30,6 +31,11 @@ function loadState() {
   if (localData) {
     try {
       state = JSON.parse(localData);
+      
+      // Default sound state to true if undefined
+      if (state.soundEnabled === undefined) {
+        state.soundEnabled = true;
+      }
       
       // Ensure timer remaining states are updated based on elapsed time if they were running
       state.lists.forEach(list => {
@@ -65,6 +71,7 @@ function loadState() {
 
 // Create a Default Starter Board
 function createDefaultBoard() {
+  state.soundEnabled = true;
   state.lists = [
     {
       id: 'list-' + generateId(),
@@ -113,6 +120,16 @@ function initEventListeners() {
   addListBtn.addEventListener('click', () => {
     addNewColumn();
   });
+
+  // Toggle sound button
+  const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+  if (toggleSoundBtn) {
+    toggleSoundBtn.addEventListener('click', () => {
+      state.soundEnabled = !state.soundEnabled;
+      saveState();
+      updateSoundUI();
+    });
+  }
 
   // Export session button
   const exportBtn = document.getElementById('export-session-btn');
@@ -954,6 +971,7 @@ function startGlobalTicker() {
             task.timer.endTimeStamp = 0;
             stateChanged = true;
             needsBoardRender = true;
+            playTimerCompletionSound();
             showAlertModal("Timer Completed ⏱️", `The timer for task "${task.title}" has finished!`);
           }
         }
@@ -1466,3 +1484,67 @@ function updateFocusOverlay() {
     }
   }
 }
+
+// Update UI toggle button and text based on state.soundEnabled
+function updateSoundUI() {
+  const soundIcon = document.getElementById('sound-icon');
+  const soundText = document.getElementById('sound-status-text');
+  const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+  if (!soundIcon || !soundText) return;
+
+  if (state.soundEnabled) {
+    soundIcon.innerHTML = `
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+    `;
+    soundText.textContent = "Sound On";
+    if (toggleSoundBtn) {
+      toggleSoundBtn.title = "Mute sound alerts";
+    }
+  } else {
+    soundIcon.innerHTML = `
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <line x1="23" y1="9" x2="17" y2="15"></line>
+      <line x1="17" y1="9" x2="23" y2="15"></line>
+    `;
+    soundText.textContent = "Muted";
+    if (toggleSoundBtn) {
+      toggleSoundBtn.title = "Unmute sound alerts";
+    }
+  }
+}
+
+// Play a clean, premium synthesizer chime when a timer completes
+function playTimerCompletionSound() {
+  if (!state.soundEnabled) return;
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Play a nice two-tone notification chime (E6 then A6)
+    const playChimeNode = (freq, startTime, duration) => {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      
+      // Smooth decay envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    const now = audioCtx.currentTime;
+    playChimeNode(1318.51, now, 0.6); // E6
+    playChimeNode(1760.00, now + 0.12, 0.8); // A6
+  } catch (err) {
+    console.warn("AudioContext failed to initialize or play completion sound:", err);
+  }
+}
+
