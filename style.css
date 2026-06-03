@@ -1641,4 +1641,151 @@ html, body {
   font-size: 0.75rem;
 }
 
+/* Custom standout theme for the Timer Completed Alert Modal */
+#alert-modal.alert-timer-completed {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(127, 29, 29, 0.98)) !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.6), 0 0 100px rgba(239, 68, 68, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.15) !important;
+  animation: alert-glow-pulse 2s infinite alternate !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+}
+
+#alert-modal.alert-timer-completed::backdrop {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, rgba(0, 0, 0, 0.85) 100%) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+#alert-modal.alert-timer-completed .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+#alert-modal.alert-timer-completed .modal-header h2 {
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #ffffff 30%, #ffedd5 70%, #fcd34d 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+#alert-modal.alert-timer-completed #alert-message {
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  line-height: 1.6 !important;
+}
+
+#alert-modal.alert-timer-completed .focus-next-task-container {
+  border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-label {
+  color: rgba(255, 255, 255, 0.7) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+#alert-modal.alert-timer-completed .next-task-content {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+#alert-modal.alert-timer-completed .next-task-timer-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+#alert-modal.alert-timer-completed .next-task-timer-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25);
+}
+
+#alert-modal.alert-timer-completed .next-task-edit-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-no-timer {
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-timer-setup input {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+#alert-modal.alert-timer-completed .next-task-timer-setup input:focus {
+  border-color: #ffffff !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+#alert-modal.alert-timer-completed .next-task-timer-setup span {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+#alert-modal.alert-timer-completed .next-timer-set-btn {
+  background: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #7f1d1d !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+#alert-modal.alert-timer-completed .next-timer-set-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  transform: translateY(-1px);
+}
+
+#alert-modal.alert-timer-completed .modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 1rem 1.5rem !important;
+}
+
+#alert-modal.alert-timer-completed #alert-dismiss-btn {
+  background: #ffffff !important;
+  color: #7f1d1d !important;
+  border: 1px solid #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all var(--transition-fast) !important;
+}
+
+#alert-modal.alert-timer-completed #alert-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+@keyframes alert-glow-pulse {
+  from {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.4), 0 0 70px rgba(239, 68, 68, 0.2), inset 0 0 15px rgba(255, 255, 255, 0.1);
+  }
+  to {
+    border-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 55px rgba(239, 68, 68, 0.8), 0 0 110px rgba(239, 68, 68, 0.5), inset 0 0 25px rgba(255, 255, 255, 0.25);
+  }
+}
+
 

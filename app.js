@@ -943,6 +943,13 @@ function showAlertModal(title, message, taskContext = null) {
   document.getElementById('alert-title').textContent = title;
   document.getElementById('alert-message').textContent = message;
 
+  // Add standout styling if it's timer completion
+  if (title.includes("Timer Completed")) {
+    alertModal.classList.add('alert-timer-completed');
+  } else {
+    alertModal.classList.remove('alert-timer-completed');
+  }
+
   // Render Up Next task section inside Alert Modal if context is provided
   const nextTaskContainer = document.getElementById('alert-next-task-container');
   if (nextTaskContainer) {
