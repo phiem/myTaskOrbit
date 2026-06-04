@@ -1788,4 +1788,14 @@ html, body {
   }
 }
 
+/* Card drag placeholder styling */
+.card-placeholder {
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.75rem;
+  transition: height var(--transition-fast) ease;
+  pointer-events: none;
+}
+
 

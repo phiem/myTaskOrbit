@@ -12,6 +12,7 @@ let state = {
 let draggedTaskId = null;
 let draggedSourceListId = null;
 let draggedColumnId = null;
+let draggedCardHeight = 0;
 
 // Ticker interval
 let tickerInterval = null;
@@ -698,6 +699,7 @@ function createTaskCardElement(task, listId) {
   card.addEventListener('dragstart', (e) => {
     draggedTaskId = task.id;
     draggedSourceListId = listId;
+    draggedCardHeight = card.offsetHeight;
     card.classList.add('dragging');
     e.dataTransfer.setData('text/plain', task.id);
     e.dataTransfer.effectAllowed = 'move';
@@ -707,6 +709,8 @@ function createTaskCardElement(task, listId) {
     card.classList.remove('dragging');
     draggedTaskId = null;
     draggedSourceListId = null;
+    draggedCardHeight = 0;
+    document.querySelectorAll('.card-placeholder').forEach(p => p.remove());
     document.querySelectorAll('.board-column').forEach(c => c.classList.remove('drag-over'));
     renderBoard();
   });
@@ -1399,18 +1403,30 @@ function setupContainerDragEvents(container) {
   container.addEventListener('dragover', (e) => {
     e.preventDefault();
     const afterElement = getDragAfterElement(container, e.clientY);
-    const draggedCard = document.querySelector('.dragging');
     
     // Add visual cues to highlight column
     const column = container.closest('.board-column');
     column.classList.add('drag-over');
 
-    if (draggedCard) {
-      if (afterElement == null) {
-        container.appendChild(draggedCard);
-      } else {
-        container.insertBefore(draggedCard, afterElement);
+    // Clean up placeholders in other columns
+    document.querySelectorAll('.card-placeholder').forEach(p => {
+      if (p.parentNode !== container) {
+        p.remove();
       }
+    });
+
+    // Create or position placeholder
+    let placeholder = container.querySelector('.card-placeholder');
+    if (!placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.className = 'card-placeholder';
+      placeholder.style.height = `${draggedCardHeight || 80}px`;
+    }
+
+    if (afterElement == null) {
+      container.appendChild(placeholder);
+    } else {
+      container.insertBefore(placeholder, afterElement);
     }
   });
 
@@ -1427,12 +1443,26 @@ function setupContainerDragEvents(container) {
     const targetListId = container.dataset.listId;
     if (!draggedTaskId || !draggedSourceListId) return;
 
-    // Determine insertion position based on current DOM order in container
-    const cardOrder = [...container.querySelectorAll('.task-card')].map(card => card.id);
-    const targetIndex = cardOrder.indexOf(draggedTaskId);
+    // Find the placeholder's position in the target container
+    const placeholder = container.querySelector('.card-placeholder');
+    let targetIndex = null;
+    if (placeholder) {
+      const cardsAndPlaceholder = [...container.children].filter(child => !child.classList.contains('dragging'));
+      targetIndex = cardsAndPlaceholder.indexOf(placeholder);
+      placeholder.remove();
+    } else {
+      // Fallback
+      const cards = [...container.querySelectorAll('.task-card:not(.dragging)')];
+      const afterElement = getDragAfterElement(container, e.clientY);
+      if (afterElement) {
+        targetIndex = cards.indexOf(afterElement);
+      } else {
+        targetIndex = cards.length;
+      }
+    }
 
     // Perform mutation
-    moveTask(draggedTaskId, draggedSourceListId, targetListId, targetIndex >= 0 ? targetIndex : null);
+    moveTask(draggedTaskId, draggedSourceListId, targetListId, targetIndex);
   });
 }
 
