@@ -1180,8 +1180,8 @@ function showAlertModal(title, message, taskContext = null) {
 function updateDateTimeDisplays() {
   const now = new Date();
   
-  // Format Time: e.g. 10:47:38 AM
-  const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  // Format Time: e.g. 10:47 AM
+  const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
   // Format Date: e.g. Tuesday, June 9, 2026
   const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const fullStr = `${dateStr} • ${timeStr}`;
