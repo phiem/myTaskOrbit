@@ -947,8 +947,8 @@ function showAlertModal(title, message, taskContext = null) {
   document.getElementById('alert-title').textContent = title;
   document.getElementById('alert-message').textContent = message;
 
-  // Add standout styling if it's timer completion
-  if (title.includes("Timer Completed")) {
+  // Add standout styling if it's timer completion or due date expiration
+  if (title.includes("Timer Completed") || title.includes("Task Deadline Reached")) {
     alertModal.classList.add('alert-timer-completed');
   } else {
     alertModal.classList.remove('alert-timer-completed');
@@ -1099,7 +1099,8 @@ function startGlobalTicker() {
             task.dueDateAlerted = true;
             stateChanged = true;
             needsBoardRender = true;
-            showAlertModal("Task Deadline Reached ⏰", `The task "${task.title}" is due now!`);
+            playTimerCompletionSound();
+            showAlertModal("Task Deadline Reached ⏰", `The task "${task.title}" is due now!`, task);
           }
         }
 
