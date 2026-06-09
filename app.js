@@ -229,10 +229,11 @@ function initEventListeners() {
       e.preventDefault();
       const afterElement = getDragAfterColumnElement(canvas, e.clientX);
       const draggedCol = document.querySelector('.dragging-column');
+      const placeholder = canvas.querySelector('.column-placeholder');
       
       if (draggedCol) {
         if (afterElement == null) {
-          canvas.appendChild(draggedCol);
+          canvas.insertBefore(draggedCol, placeholder);
         } else {
           canvas.insertBefore(draggedCol, afterElement);
         }
@@ -603,7 +604,20 @@ function renderBoard() {
     setupContainerDragEvents(tasksContainer);
   });
 
-
+  // Render a placeholder "Create New List" card at the end
+  const placeholderEl = document.createElement('div');
+  placeholderEl.className = 'column-placeholder';
+  placeholderEl.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    <span>Create New List</span>
+  `;
+  placeholderEl.addEventListener('click', () => {
+    addNewColumn();
+  });
+  canvas.appendChild(placeholderEl);
 
   // Update Focus Overlay dialog states in sync with board updates
   updateFocusOverlay();
