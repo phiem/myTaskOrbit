@@ -1798,4 +1798,27 @@ html, body {
   pointer-events: none;
 }
 
+/* Autosave status dot indicator */
+.autosave-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-dark);
+  display: inline-block;
+  margin-left: 0.55rem;
+  transition: all var(--transition-fast) ease;
+}
+.autosave-status-dot.success {
+  background-color: var(--accent-success) !important;
+  box-shadow: 0 0 8px var(--accent-success-glow);
+}
+.autosave-status-dot.warning {
+  background-color: var(--accent-warning) !important;
+  box-shadow: 0 0 8px var(--accent-warning-glow);
+}
+.autosave-status-dot.error {
+  background-color: var(--accent-danger) !important;
+  box-shadow: 0 0 8px var(--accent-danger-glow);
+}
+
 

@@ -60,6 +60,15 @@
           <span id="sound-status-text">Sound On</span>
         </button>
 
+        <button id="autosave-config-btn" class="btn btn-secondary" title="Configure Autosave Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.9rem; height: 0.9rem;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span id="autosave-status-text">Autosave: LocalStorage</span>
+          <span id="autosave-status-dot" class="autosave-status-dot success"></span>
+        </button>
+
         <button id="export-session-btn" class="btn btn-secondary" title="Export session to file">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.9rem; height: 0.9rem;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -253,6 +262,41 @@
       </div>
     </div>
   </div>
+
+  <!-- Autosave Settings Modal Dialog -->
+  <dialog id="autosave-modal" class="modal">
+    <form method="dialog" class="modal-form">
+      <div class="modal-header">
+        <h2 id="autosave-title">Autosave Settings</h2>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem 1.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <input type="checkbox" id="autosave-enable" style="width: 1.15rem; height: 1.15rem; accent-color: var(--accent-primary); cursor: pointer;">
+          <label for="autosave-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Enable Periodic Autosave (every 5 minutes)</label>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <input type="checkbox" id="autosave-file-enable" style="width: 1.15rem; height: 1.15rem; accent-color: var(--accent-primary); cursor: pointer;">
+            <label for="autosave-file-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Also write backup to a local folder</label>
+          </div>
+          
+          <div id="autosave-folder-selection" style="display: none; flex-direction: column; gap: 0.75rem; margin-left: 1.9rem; margin-top: 0.25rem; padding: 0.85rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px;">
+            <button type="button" class="btn btn-secondary" id="autosave-select-folder-btn" style="width: fit-content; font-size: 0.8rem; padding: 0.45rem 0.9rem; border-radius: var(--radius-sm);">
+              Select Folder Location
+            </button>
+            <div id="autosave-folder-info" style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; font-style: italic;">
+              No folder selected
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" id="autosave-cancel-btn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="autosave-save-btn">Save Settings</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Main JavaScript File -->
   <script src="app.js"></script>

@@ -27,6 +27,7 @@ window.addEventListener('DOMContentLoaded', () => {
   updateSoundUI();
   startGlobalTicker();
   updateStats();
+  initAutosave();
 });
 
 // Load State from LocalStorage
@@ -39,6 +40,15 @@ function loadState() {
       // Default sound state to true if undefined
       if (state.soundEnabled === undefined) {
         state.soundEnabled = true;
+      }
+      
+      // Default autosave configuration if undefined
+      if (!state.autosave) {
+        state.autosave = {
+          enabled: true,
+          fileEnabled: false,
+          folderName: ''
+        };
       }
       
       // Ensure timer remaining states are updated based on elapsed time if they were running
@@ -76,6 +86,11 @@ function loadState() {
 // Create a Default Starter Board
 function createDefaultBoard() {
   state.soundEnabled = true;
+  state.autosave = {
+    enabled: true,
+    fileEnabled: false,
+    folderName: ''
+  };
   state.lists = [
     {
       id: 'list-' + generateId(),
@@ -295,6 +310,91 @@ function initEventListeners() {
   if (alertModal) {
     alertModal.addEventListener('close', () => {
       stopRepeatingChime();
+    });
+  }
+
+  // Autosave Modal and action bindings
+  const autosaveConfigBtn = document.getElementById('autosave-config-btn');
+  if (autosaveConfigBtn) {
+    autosaveConfigBtn.addEventListener('click', () => {
+      openAutosaveModal();
+    });
+  }
+
+  const autosaveModal = document.getElementById('autosave-modal');
+  if (autosaveModal) {
+    const autosaveForm = autosaveModal.querySelector('.modal-form');
+    const enableCheckbox = document.getElementById('autosave-enable');
+    const fileCheckbox = document.getElementById('autosave-file-enable');
+    const cancelBtn = document.getElementById('autosave-cancel-btn');
+
+    cancelBtn.addEventListener('click', () => {
+      autosaveModal.close();
+    });
+
+    autosaveForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const wasFileEnabled = state.autosave ? state.autosave.fileEnabled : false;
+      
+      state.autosave.enabled = enableCheckbox.checked;
+      state.autosave.fileEnabled = fileCheckbox.checked;
+
+      // Handle folder handle cleaning if they disabled file autosave
+      if (!state.autosave.fileEnabled) {
+        state.autosave.folderName = '';
+        await clearFolderHandle();
+      } else if (!wasFileEnabled && state.autosave.fileEnabled && !state.autosave.folderName) {
+        // If they enabled file autosave but haven't selected a folder yet, alert them
+        alert("Please select a folder location for file autosave.");
+        return;
+      }
+
+      saveState();
+      startAutosaveTimer();
+      updateAutosaveUI();
+      autosaveModal.close();
+    });
+
+    // Close on outside click
+    autosaveModal.addEventListener('click', (e) => {
+      const rect = autosaveModal.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) {
+        autosaveModal.close();
+      }
+    });
+  }
+
+  const selectFolderBtn = document.getElementById('autosave-select-folder-btn');
+  if (selectFolderBtn) {
+    selectFolderBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        if (typeof window.showDirectoryPicker !== 'function') {
+          alert("Directory picker is not supported in this browser. Try Chrome or Edge.");
+          return;
+        }
+        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        const permission = await handle.requestPermission({ mode: 'readwrite' });
+        if (permission === 'granted') {
+          state.autosave.folderName = handle.name;
+          const folderInfo = document.getElementById('autosave-folder-info');
+          if (folderInfo) {
+            folderInfo.textContent = `Folder: ${handle.name}`;
+          }
+          await saveFolderHandle(handle);
+          saveState();
+        } else {
+          alert("Permission to write to the folder was denied.");
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Folder selection failed:", err);
+          alert("An error occurred during folder selection: " + err.message);
+        }
+      }
     });
   }
 }
@@ -1867,4 +1967,231 @@ function stopRepeatingChime() {
     clearInterval(chimeRepeatInterval);
     chimeRepeatInterval = null;
   }
+}
+
+// ==========================================
+// Autosave & Local Folder Sync Implementation
+// ==========================================
+
+const DB_NAME = 'TaskOrbitAutosaveDB';
+const STORE_NAME = 'handles';
+const KEY_NAME = 'directoryHandle';
+let autosaveInterval = null;
+
+// Open IndexedDB connection to store non-serializable FileSystemDirectoryHandle objects
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      db.createObjectStore(STORE_NAME);
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// Persist the directory handle to IndexedDB
+async function saveFolderHandle(handle) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put(handle, KEY_NAME);
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.error("Failed to save folder handle in IndexedDB:", err);
+  }
+}
+
+// Retrieve the directory handle from IndexedDB
+async function loadFolderHandle() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(KEY_NAME);
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.error("Failed to load folder handle from IndexedDB:", err);
+    return null;
+  }
+}
+
+// Clear the directory handle from IndexedDB
+async function clearFolderHandle() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(KEY_NAME);
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.error("Failed to clear folder handle in IndexedDB:", err);
+  }
+}
+
+// Initialize the autosave mechanisms
+async function initAutosave() {
+  if (!state.autosave) return;
+
+  // 1. Populate UI fields based on current settings
+  const handle = await loadFolderHandle();
+  if (handle) {
+    state.autosave.folderName = handle.name;
+    const folderInfo = document.getElementById('autosave-folder-info');
+    if (folderInfo) {
+      folderInfo.textContent = `Folder: ${handle.name}`;
+    }
+  }
+
+  // 2. Start the periodic interval timer
+  startAutosaveTimer();
+
+  // 3. Update status text and dot in header
+  updateAutosaveUI();
+
+  // 4. One-time interactive user-gesture verification for loaded handles
+  if (state.autosave.fileEnabled && handle) {
+    const requestPermissionOnFirstClick = async () => {
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission !== 'granted') {
+        try {
+          await handle.requestPermission({ mode: 'readwrite' });
+        } catch (e) {
+          console.warn("Interactive autosave directory permission prompt was rejected or deferred.", e);
+        }
+      }
+      updateAutosaveUI();
+      document.removeEventListener('click', requestPermissionOnFirstClick);
+    };
+    document.addEventListener('click', requestPermissionOnFirstClick);
+  }
+}
+
+// Start the 5 minute periodic timer
+function startAutosaveTimer() {
+  if (autosaveInterval) clearInterval(autosaveInterval);
+  
+  autosaveInterval = setInterval(() => {
+    triggerAutosave();
+  }, 5 * 60 * 1000); // 5 minutes
+}
+
+// Run the autosave action
+async function triggerAutosave() {
+  if (!state.autosave || !state.autosave.enabled) return;
+
+  // Save to standard localStorage key as a secondary backup
+  localStorage.setItem('taskorbit_board_state_autosave', JSON.stringify(state));
+  console.log("Autosave: Saved current session state to LocalStorage backup.");
+
+  // Save to local folder if enabled
+  if (state.autosave.fileEnabled) {
+    const handle = await loadFolderHandle();
+    if (handle) {
+      try {
+        const permission = await handle.queryPermission({ mode: 'readwrite' });
+        if (permission === 'granted') {
+          const fileHandle = await handle.getFileHandle('taskorbit-session-autosave.json', { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(JSON.stringify(state, null, 2));
+          await writable.close();
+          console.log("Autosave: Wrote session file to local folder.");
+          updateAutosaveUI();
+        } else {
+          console.warn("Autosave skipped: Write permission not granted.");
+          updateAutosaveUI();
+        }
+      } catch (err) {
+        console.error("Autosave file write failed:", err);
+        updateAutosaveUI();
+      }
+    } else {
+      console.warn("Autosave skipped: No local directory handle found.");
+      updateAutosaveUI();
+    }
+  } else {
+    updateAutosaveUI();
+  }
+}
+
+// Update the header button text and status dot dynamically
+async function updateAutosaveUI() {
+  const statusText = document.getElementById('autosave-status-text');
+  const statusDot = document.getElementById('autosave-status-dot');
+  if (!statusText || !statusDot) return;
+
+  if (!state.autosave || !state.autosave.enabled) {
+    statusText.textContent = 'Autosave: Off';
+    statusDot.className = 'autosave-status-dot';
+    return;
+  }
+
+  if (state.autosave.fileEnabled) {
+    const handle = await loadFolderHandle();
+    if (handle) {
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission === 'granted') {
+        statusText.textContent = 'Autosave: Active';
+        statusDot.className = 'autosave-status-dot success';
+      } else {
+        statusText.textContent = 'Autosave: Auth Needed';
+        statusDot.className = 'autosave-status-dot warning';
+      }
+    } else {
+      statusText.textContent = 'Autosave: Config Error';
+      statusDot.className = 'autosave-status-dot error';
+    }
+  } else {
+    statusText.textContent = 'Autosave: LocalStorage';
+    statusDot.className = 'autosave-status-dot success';
+  }
+}
+
+// Open Autosave Configuration Modal Dialog
+function openAutosaveModal() {
+  const modal = document.getElementById('autosave-modal');
+  if (!modal) return;
+
+  const enableCheckbox = document.getElementById('autosave-enable');
+  const fileCheckbox = document.getElementById('autosave-file-enable');
+  const folderSelection = document.getElementById('autosave-folder-selection');
+  const folderInfo = document.getElementById('autosave-folder-info');
+
+  if (enableCheckbox && fileCheckbox && folderSelection && folderInfo) {
+    enableCheckbox.checked = !!state.autosave.enabled;
+    fileCheckbox.checked = !!state.autosave.fileEnabled;
+    folderSelection.style.display = state.autosave.fileEnabled ? 'flex' : 'none';
+    folderInfo.textContent = state.autosave.folderName ? `Folder: ${state.autosave.folderName}` : 'No folder selected';
+
+    // Toggle folder picker visibility based on checkbox status
+    const toggleFolderDisplay = () => {
+      folderSelection.style.display = fileCheckbox.checked ? 'flex' : 'none';
+    };
+    fileCheckbox.onchange = toggleFolderDisplay;
+
+    // Check directory picker browser support
+    const selectBtn = document.getElementById('autosave-select-folder-btn');
+    if (selectBtn) {
+      if (typeof window.showDirectoryPicker !== 'function') {
+        selectBtn.disabled = true;
+        selectBtn.title = "Directory Picker API is not supported in this browser. Try Chrome or Edge.";
+        folderInfo.textContent = "Folder sync not supported in this browser.";
+      } else {
+        selectBtn.disabled = false;
+      }
+    }
+  }
+
+  modal.showModal();
 }
