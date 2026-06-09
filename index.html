@@ -35,20 +35,10 @@
         </div>
       </div>
 
-      <!-- Board Stats Grid -->
-      <div class="stats-panel">
-        <div class="stat-card" id="stat-tasks">
-          <span class="stat-value">0</span>
-          <span class="stat-label">Total Tasks</span>
-        </div>
-        <div class="stat-card" id="stat-timers">
-          <span class="stat-value">0</span>
-          <span class="stat-label">Active Timers</span>
-        </div>
-        <div class="stat-card" id="stat-completed">
-          <span class="stat-value">0</span>
-          <span class="stat-label">Done</span>
-        </div>
+      <!-- Current Date and Time -->
+      <div class="header-datetime" id="header-datetime">
+        <span class="header-time" id="header-time"></span>
+        <span class="header-date" id="header-date"></span>
       </div>
 
       <div class="header-actions">
@@ -86,14 +76,6 @@
           Import
         </button>
         <input type="file" id="import-session-file" accept=".json" style="display: none;">
-        
-        <button id="add-list-btn" class="btn btn-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          New List
-        </button>
       </div>
     </header>
 
@@ -109,7 +91,10 @@
   <dialog id="task-modal" class="modal">
     <form method="dialog" class="modal-form">
       <div class="modal-header">
-        <h2>Task Details</h2>
+        <div class="modal-title-container">
+          <h2>Task Details</h2>
+          <span class="modal-datetime-display"></span>
+        </div>
         <button type="button" class="btn-close" id="close-modal-btn" aria-label="Close dialog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -161,7 +146,10 @@
   <dialog id="alert-modal" class="modal">
     <form method="dialog" class="modal-form">
       <div class="modal-header">
-        <h2 id="alert-title">Notification</h2>
+        <div class="modal-title-container">
+          <h2 id="alert-title">Notification</h2>
+          <span class="modal-datetime-display"></span>
+        </div>
       </div>
       <div class="modal-body">
         <p id="alert-message" style="font-size: 0.9rem; line-height: 1.5; color: var(--text-main); margin-bottom: 0.5rem;"></p>
@@ -228,6 +216,7 @@
         <svg class="maximize-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
       </button>
       <div class="focus-title">Focus Session</div>
+      <div class="focus-datetime-display" id="focus-datetime-display" style="font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-bottom: 0.75rem; font-weight: 500; text-align: center;"></div>
       <div class="focus-task-name" id="focus-task-name">Task Name</div>
       <div class="focus-time" id="focus-time">00:00</div>
       <div class="focus-controls">
@@ -267,7 +256,10 @@
   <dialog id="autosave-modal" class="modal">
     <form method="dialog" class="modal-form">
       <div class="modal-header">
-        <h2 id="autosave-title">Autosave Settings</h2>
+        <div class="modal-title-container">
+          <h2 id="autosave-title">Autosave Settings</h2>
+          <span class="modal-datetime-display"></span>
+        </div>
       </div>
       <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem 1.75rem;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">

@@ -134,11 +134,6 @@ function saveState() {
 
 // Event Listeners for global actions
 function initEventListeners() {
-  // Add list column button
-  const addListBtn = document.getElementById('add-list-btn');
-  addListBtn.addEventListener('click', () => {
-    addNewColumn();
-  });
 
   // Toggle sound button
   const toggleSoundBtn = document.getElementById('toggle-sound-btn');
@@ -234,11 +229,10 @@ function initEventListeners() {
       e.preventDefault();
       const afterElement = getDragAfterColumnElement(canvas, e.clientX);
       const draggedCol = document.querySelector('.dragging-column');
-      const placeholder = canvas.querySelector('.column-placeholder');
       
       if (draggedCol) {
         if (afterElement == null) {
-          canvas.insertBefore(draggedCol, placeholder);
+          canvas.appendChild(draggedCol);
         } else {
           canvas.insertBefore(draggedCol, afterElement);
         }
@@ -609,20 +603,7 @@ function renderBoard() {
     setupContainerDragEvents(tasksContainer);
   });
 
-  // Render a placeholder "Create New List" card at the end
-  const placeholderEl = document.createElement('div');
-  placeholderEl.className = 'column-placeholder';
-  placeholderEl.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
-    <span>Create New List</span>
-  `;
-  placeholderEl.addEventListener('click', () => {
-    addNewColumn();
-  });
-  canvas.appendChild(placeholderEl);
+
 
   // Update Focus Overlay dialog states in sync with board updates
   updateFocusOverlay();
@@ -1181,11 +1162,43 @@ function showAlertModal(title, message, taskContext = null) {
   alertModal.showModal();
 }
 
+// Update current date and time on all display elements
+function updateDateTimeDisplays() {
+  const now = new Date();
+  
+  // Format Time: e.g. 10:47:38 AM
+  const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  // Format Date: e.g. Tuesday, June 9, 2026
+  const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const fullStr = `${dateStr} • ${timeStr}`;
+
+  // Update Header Date and Time
+  const headerTime = document.getElementById('header-time');
+  const headerDate = document.getElementById('header-date');
+  if (headerTime) headerTime.textContent = timeStr;
+  if (headerDate) headerDate.textContent = dateStr;
+
+  // Update all Modal DateTime Displays
+  document.querySelectorAll('.modal-datetime-display').forEach(el => {
+    el.textContent = fullStr;
+  });
+
+  // Update Focus Overlay DateTime Display
+  const focusDateTime = document.getElementById('focus-datetime-display');
+  if (focusDateTime) {
+    focusDateTime.textContent = fullStr;
+  }
+}
+
 // Start visual ticker updates for all cards
 function startGlobalTicker() {
   if (tickerInterval) clearInterval(tickerInterval);
 
+  // Initial immediate run to populate date/time right away
+  updateDateTimeDisplays();
+
   tickerInterval = setInterval(() => {
+    updateDateTimeDisplays();
     let hasRunningTimers = false;
     let stateChanged = false;
     let needsBoardRender = false;
@@ -1584,30 +1597,7 @@ function getDragAfterElement(container, y) {
 
 // Calculate board stats for header dashboard
 function updateStats() {
-  let totalTasks = 0;
-  let activeTimers = 0;
-  let completedTasks = 0;
-
-  state.lists.forEach((list, index) => {
-    totalTasks += list.tasks.length;
-    
-    list.tasks.forEach(task => {
-      if (task.timer && task.timer.state === 'running') {
-        activeTimers++;
-      }
-      if (task.completed) {
-        completedTasks++;
-      }
-    });
-  });
-
-  const statTasks = document.getElementById('stat-tasks');
-  const statTimers = document.getElementById('stat-timers');
-  const statCompleted = document.getElementById('stat-completed');
-
-  if (statTasks) statTasks.querySelector('.stat-value').textContent = totalTasks;
-  if (statTimers) statTimers.querySelector('.stat-value').textContent = activeTimers;
-  if (statCompleted) statCompleted.querySelector('.stat-value').textContent = completedTasks;
+  // Stat counters removed from header
 }
 
 // Helper: Escape user HTML input

@@ -1821,4 +1821,47 @@ html, body {
   box-shadow: 0 0 8px var(--accent-danger-glow);
 }
 
+/* Header Live Date & Time Styling */
+.header-datetime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.2rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.header-time {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.1;
+  letter-spacing: 0.5px;
+}
+
+.header-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Modal / Popup Date & Time Display */
+.modal-title-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.modal-datetime-display {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+#alert-modal.alert-timer-completed .modal-datetime-display {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
 
