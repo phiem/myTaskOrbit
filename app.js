@@ -785,7 +785,13 @@ function createTaskCardElement(task, listId) {
 
   // Modal Dialog click
   card.addEventListener('dblclick', (e) => {
-    if (e.target !== titleText && e.target !== note && !e.target.closest('.badge') && !e.target.closest('.timer-wrapper') && !e.target.closest('.task-checkbox-btn')) {
+    // Open edit popup on double click, ignoring checkbox/options buttons, timer control buttons, and inline input elements
+    if (!e.target.closest('.task-checkbox-btn') && 
+        !e.target.closest('.task-options-btn') && 
+        !e.target.closest('.timer-btn') && 
+        !e.target.closest('.timer-setup-inline') &&
+        e.target.tagName !== 'INPUT' && 
+        e.target.tagName !== 'BUTTON') {
       openTaskModal(task.id);
     }
   });
