@@ -163,18 +163,88 @@ function initEventListeners() {
     });
   }
 
-  // Import session button & file input
-  const importBtn = document.getElementById('import-session-btn');
-  const importFileInput = document.getElementById('import-session-file');
-  if (importBtn && importFileInput) {
-    importBtn.addEventListener('click', () => {
-      importFileInput.click();
-    });
-    importFileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        importSession(e.target.files[0]);
-        // Reset the value so the same file can be selected again
-        e.target.value = '';
+  // Import session modal and bindings
+  const importModal = document.getElementById('import-modal');
+  if (importModal) {
+    const importBtn = document.getElementById('import-session-btn');
+    const importFileInput = document.getElementById('import-session-file');
+    const importFileTriggerBtn = document.getElementById('import-file-trigger-btn');
+    const importJsonbinSubmitBtn = document.getElementById('import-jsonbin-submit-btn');
+    const importCancelBtn = document.getElementById('import-cancel-btn');
+
+    if (importBtn) {
+      importBtn.addEventListener('click', () => {
+        openImportModal();
+      });
+    }
+
+    if (importFileTriggerBtn && importFileInput) {
+      importFileTriggerBtn.addEventListener('click', () => {
+        importFileInput.click();
+      });
+    }
+
+    if (importFileInput) {
+      importFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          importSession(e.target.files[0]);
+          importModal.close();
+          // Reset the value so the same file can be selected again
+          e.target.value = '';
+        }
+      });
+    }
+
+    if (importJsonbinSubmitBtn) {
+      importJsonbinSubmitBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        const keyInput = document.getElementById('import-jsonbin-key');
+        const binInput = document.getElementById('import-jsonbin-bin');
+
+        const apiKey = keyInput ? keyInput.value.trim() : '';
+        const binId = binInput ? binInput.value.trim() : '';
+
+        if (!apiKey) {
+          alert("Please enter a JSONBin.io Master Key.");
+          return;
+        }
+        if (!binId) {
+          alert("Please enter a JSONBin.io Bin ID.");
+          return;
+        }
+
+        const originalText = importJsonbinSubmitBtn.textContent;
+        importJsonbinSubmitBtn.disabled = true;
+        importJsonbinSubmitBtn.textContent = 'Importing...';
+
+        try {
+          await importFromJSONBin(binId, apiKey);
+          importModal.close();
+          showAlertModal("Session Imported Successfully 📂", "Your board session has been restored from JSONBin.io.");
+        } catch (err) {
+          console.error("Cloud import failed:", err);
+          alert("Import failed: " + err.message);
+        } finally {
+          importJsonbinSubmitBtn.disabled = false;
+          importJsonbinSubmitBtn.textContent = originalText;
+        }
+      });
+    }
+
+    if (importCancelBtn) {
+      importCancelBtn.addEventListener('click', () => {
+        importModal.close();
+      });
+    }
+
+    // Close on outside click
+    importModal.addEventListener('click', (e) => {
+      const rect = importModal.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) {
+        importModal.close();
       }
     });
   }
@@ -1790,63 +1860,75 @@ function exportSession() {
   }
 }
 
+// Load and validate imported board state
+function loadImportedState(importedData) {
+  // Simple validation: must have lists array
+  if (!importedData || !Array.isArray(importedData.lists)) {
+    throw new Error("Invalid session structure");
+  }
+  
+  // Sanitization: ensure each list and task has basic fields
+  importedData.lists.forEach(list => {
+    if (!list.id || !list.name || !Array.isArray(list.tasks)) {
+      throw new Error("Invalid list structure in session file");
+    }
+    list.tasks.forEach(task => {
+      if (!task.id || !task.title) {
+        throw new Error("Invalid task structure in session file");
+      }
+      if (!task.timer) {
+        task.timer = { duration: 0, remaining: 0, state: 'idle', endTimeStamp: 0 };
+      }
+    });
+  });
+
+  // Update state
+  state = importedData;
+  
+  // Handle elapsed time for active/running timers
+  state.lists.forEach(list => {
+    list.tasks.forEach(task => {
+      if (task.timer && task.timer.state === 'running') {
+        const now = Date.now();
+        const end = task.timer.endTimeStamp || 0;
+        if (end > now) {
+          task.timer.remaining = Math.max(0, Math.ceil((end - now) / 1000));
+        } else {
+          task.timer.remaining = 0;
+          task.timer.state = 'completed';
+        }
+      }
+      if (task.dueDate) {
+        const dueTime = new Date(task.dueDate).getTime();
+        if (Date.now() >= dueTime) {
+          task.dueDateAlerted = true;
+        } else {
+          task.dueDateAlerted = false;
+        }
+      }
+    });
+  });
+
+  saveState();
+  renderBoard();
+  updateStats();
+  
+  // Re-initialize autosave timer since new settings may have loaded
+  if (state.autosave && state.autosave.enabled) {
+    startAutosaveTimer();
+  } else if (autosaveInterval) {
+    clearInterval(autosaveInterval);
+  }
+  updateAutosaveUI();
+}
+
 // Import state/session from JSON file
 function importSession(file) {
   const reader = new FileReader();
   reader.onload = function(event) {
     try {
       const importedData = JSON.parse(event.target.result);
-      
-      // Simple validation: must have lists array
-      if (!importedData || !Array.isArray(importedData.lists)) {
-        throw new Error("Invalid session structure");
-      }
-      
-      // Sanitization: ensure each list and task has basic fields
-      importedData.lists.forEach(list => {
-        if (!list.id || !list.name || !Array.isArray(list.tasks)) {
-          throw new Error("Invalid list structure in session file");
-        }
-        list.tasks.forEach(task => {
-          if (!task.id || !task.title) {
-            throw new Error("Invalid task structure in session file");
-          }
-          if (!task.timer) {
-            task.timer = { duration: 0, remaining: 0, state: 'idle', endTimeStamp: 0 };
-          }
-        });
-      });
-
-      // Update state
-      state = importedData;
-      
-      // Handle elapsed time for active/running timers
-      state.lists.forEach(list => {
-        list.tasks.forEach(task => {
-          if (task.timer && task.timer.state === 'running') {
-            const now = Date.now();
-            const end = task.timer.endTimeStamp || 0;
-            if (end > now) {
-              task.timer.remaining = Math.max(0, Math.ceil((end - now) / 1000));
-            } else {
-              task.timer.remaining = 0;
-              task.timer.state = 'completed';
-            }
-          }
-          if (task.dueDate) {
-            const dueTime = new Date(task.dueDate).getTime();
-            if (Date.now() >= dueTime) {
-              task.dueDateAlerted = true;
-            } else {
-              task.dueDateAlerted = false;
-            }
-          }
-        });
-      });
-
-      saveState();
-      renderBoard();
-      updateStats();
+      loadImportedState(importedData);
       showAlertModal("Session Imported Successfully 📂", "Your board session has been restored from the file.");
     } catch (e) {
       console.error("Import failed:", e);
@@ -1854,6 +1936,51 @@ function importSession(file) {
     }
   };
   reader.readAsText(file);
+}
+
+// Fetch and import state/session from JSONBin.io
+async function importFromJSONBin(binId, apiKey) {
+  const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'GET',
+    headers: {
+      'X-Master-Key': apiKey
+    }
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  const importedData = data.record;
+  
+  // Preserve/overwrite the autosave config inside the new state with the keys they just used to import it
+  if (!importedData.autosave) {
+    importedData.autosave = {};
+  }
+  importedData.autosave.enabled = true;
+  importedData.autosave.jsonbinEnabled = true;
+  importedData.autosave.jsonbinApiKey = apiKey;
+  importedData.autosave.jsonbinBinId = binId;
+  
+  loadImportedState(importedData);
+}
+
+// Open Import Configuration Modal Dialog
+function openImportModal() {
+  const modal = document.getElementById('import-modal');
+  if (!modal) return;
+
+  const keyInput = document.getElementById('import-jsonbin-key');
+  const binInput = document.getElementById('import-jsonbin-bin');
+
+  if (keyInput && binInput) {
+    keyInput.value = (state.autosave && state.autosave.jsonbinApiKey) || '';
+    binInput.value = (state.autosave && state.autosave.jsonbinBinId) || '';
+  }
+
+  modal.showModal();
 }
 
 // Update the Focus Overlay dialog UI state

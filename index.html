@@ -311,6 +311,58 @@
     </form>
   </dialog>
 
+  <!-- Import Option Modal Dialog -->
+  <dialog id="import-modal" class="modal">
+    <form method="dialog" class="modal-form">
+      <div class="modal-header">
+        <div class="modal-title-container">
+          <h2 id="import-title">Import Session</h2>
+          <span class="modal-datetime-display"></span>
+        </div>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem 1.75rem;">
+        
+        <!-- Local File Import Section -->
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin: 0;">Option 1: Import from Local File</h3>
+          <button type="button" class="btn btn-secondary" id="import-file-trigger-btn" style="width: fit-content; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.9rem; height: 0.9rem; margin-right: 0.35rem;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Choose JSON File...
+          </button>
+        </div>
+
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 0.25rem 0;"></div>
+
+        <!-- Cloud JSONBin.io Import Section -->
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin: 0;">Option 2: Import from JSONBin.io</h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.85rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label for="import-jsonbin-key" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">JSONBin.io Master Key</label>
+              <input type="password" id="import-jsonbin-key" placeholder="Enter Master Key..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label for="import-jsonbin-bin" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Bin ID</label>
+              <input type="text" id="import-jsonbin-bin" placeholder="Enter Bin ID..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
+            </div>
+            <button type="button" class="btn btn-primary" id="import-jsonbin-submit-btn" style="width: fit-content; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: var(--radius-sm); margin-top: 0.25rem;">
+              Fetch & Import from Cloud
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" id="import-cancel-btn">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Main JavaScript File -->
   <script src="app.js"></script>
 </body>
