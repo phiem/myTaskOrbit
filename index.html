@@ -301,9 +301,12 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer" style="justify-content: flex-end; gap: 0.75rem;">
-        <button type="button" class="btn btn-secondary" id="autosave-cancel-btn">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="autosave-save-btn">Save Settings</button>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="autosave-sync-now-btn" style="display: none;">Sync Now</button>
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-left: auto;">
+          <button type="button" class="btn btn-secondary" id="autosave-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="autosave-save-btn">Save Settings</button>
+        </div>
       </div>
     </form>
   </dialog>

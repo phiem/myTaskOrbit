@@ -373,7 +373,103 @@ function initEventListeners() {
       startAutosaveTimer();
       updateAutosaveUI();
       autosaveModal.close();
+
+      // Trigger sync immediately in the background
+      try {
+        await triggerAutosave();
+      } catch (err) {
+        console.error("Initial background autosave sync failed:", err);
+      }
     });
+
+    const syncNowBtn = document.getElementById('autosave-sync-now-btn');
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        const jsonbinCheckbox = document.getElementById('autosave-jsonbin-enable');
+        const jsonbinApiKeyInput = document.getElementById('jsonbin-api-key');
+        const jsonbinBinIdInput = document.getElementById('jsonbin-bin-id');
+        const enableCheckbox = document.getElementById('autosave-enable');
+
+        const apiKey = jsonbinApiKeyInput ? jsonbinApiKeyInput.value.trim() : '';
+        const binId = jsonbinBinIdInput ? jsonbinBinIdInput.value.trim() : '';
+
+        if (!apiKey) {
+          alert("Please enter a JSONBin.io Master Key first.");
+          return;
+        }
+
+        // Store original button state and styling
+        const originalText = syncNowBtn.textContent;
+        const originalBg = syncNowBtn.style.background;
+        const originalBorder = syncNowBtn.style.borderColor;
+
+        // Visual feedback: Syncing...
+        syncNowBtn.disabled = true;
+        syncNowBtn.textContent = 'Syncing...';
+        syncNowBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        syncNowBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+
+        // Temporarily copy inputs to state.autosave so triggerAutosave uses them
+        const originalAutosaveConfig = { ...state.autosave };
+
+        state.autosave.enabled = enableCheckbox.checked;
+        state.autosave.jsonbinEnabled = jsonbinCheckbox.checked;
+        state.autosave.jsonbinApiKey = apiKey;
+        state.autosave.jsonbinBinId = binId;
+
+        try {
+          // Perform the autosave sync action
+          await triggerAutosave();
+
+          // Update bin ID input in the modal if it changed (newly created bin)
+          if (jsonbinBinIdInput && state.autosave.jsonbinBinId) {
+            jsonbinBinIdInput.value = state.autosave.jsonbinBinId;
+          }
+
+          // Sync successful: commit the changes permanently to the state
+          saveState();
+          startAutosaveTimer();
+
+          // Visual feedback: Synced!
+          syncNowBtn.textContent = 'Synced!';
+          syncNowBtn.style.background = 'rgba(16, 185, 129, 0.2)'; // semi-transparent green
+          syncNowBtn.style.borderColor = 'rgb(16, 185, 129)';
+          syncNowBtn.style.color = '#fff';
+
+          setTimeout(() => {
+            syncNowBtn.disabled = false;
+            syncNowBtn.textContent = originalText;
+            syncNowBtn.style.background = originalBg;
+            syncNowBtn.style.borderColor = originalBorder;
+            syncNowBtn.style.color = '';
+          }, 3000);
+        } catch (err) {
+          console.error("Manual JSONBin.io sync failed:", err);
+
+          // Visual feedback: Failed!
+          syncNowBtn.textContent = 'Failed!';
+          syncNowBtn.style.background = 'rgba(239, 68, 68, 0.2)'; // semi-transparent red
+          syncNowBtn.style.borderColor = 'rgb(239, 68, 68)';
+          syncNowBtn.style.color = '#fff';
+
+          alert("Sync failed: " + err.message);
+
+          setTimeout(() => {
+            syncNowBtn.disabled = false;
+            syncNowBtn.textContent = originalText;
+            syncNowBtn.style.background = originalBg;
+            syncNowBtn.style.borderColor = originalBorder;
+            syncNowBtn.style.color = '';
+          }, 3000);
+
+          // Restore original config in state if it failed and wasn't saved yet
+          state.autosave = originalAutosaveConfig;
+          updateAutosaveUI();
+        }
+      });
+    }
 
     // Close on outside click
     autosaveModal.addEventListener('click', (e) => {
@@ -2256,6 +2352,7 @@ function openAutosaveModal() {
   const jsonbinSelection = document.getElementById('autosave-jsonbin-selection');
   const jsonbinApiKeyInput = document.getElementById('jsonbin-api-key');
   const jsonbinBinIdInput = document.getElementById('jsonbin-bin-id');
+  const syncNowBtn = document.getElementById('autosave-sync-now-btn');
 
   if (enableCheckbox && fileCheckbox && jsonbinCheckbox && folderSelection && jsonbinSelection) {
     enableCheckbox.checked = !!state.autosave.enabled;
@@ -2264,6 +2361,9 @@ function openAutosaveModal() {
     
     folderSelection.style.display = state.autosave.fileEnabled ? 'flex' : 'none';
     jsonbinSelection.style.display = state.autosave.jsonbinEnabled ? 'flex' : 'none';
+    if (syncNowBtn) {
+      syncNowBtn.style.display = state.autosave.jsonbinEnabled ? 'inline-flex' : 'none';
+    }
     folderInfo.textContent = state.autosave.folderName ? `Folder: ${state.autosave.folderName}` : 'No folder selected';
 
     if (jsonbinApiKeyInput) jsonbinApiKeyInput.value = state.autosave.jsonbinApiKey || '';
@@ -2276,6 +2376,9 @@ function openAutosaveModal() {
     // Toggle JSONBin visibility based on checkbox status
     jsonbinCheckbox.onchange = () => {
       jsonbinSelection.style.display = jsonbinCheckbox.checked ? 'flex' : 'none';
+      if (syncNowBtn) {
+        syncNowBtn.style.display = jsonbinCheckbox.checked ? 'inline-flex' : 'none';
+      }
     };
 
     // Check directory picker browser support
