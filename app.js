@@ -2343,6 +2343,19 @@ function openAutosaveModal() {
           });
           
           tokenClient.requestAccessToken();
+          
+          // Fallback: GSI does not invoke the callback if the user closes the popup.
+          // We listen for the window gaining focus to reset the button state.
+          const resetButtonOnFocus = () => {
+            setTimeout(() => {
+              if (gdriveAuthBtn.textContent === 'Authorizing...') {
+                gdriveAuthBtn.disabled = false;
+                gdriveAuthBtn.textContent = 'Authorize Google Drive';
+              }
+            }, 1000);
+            window.removeEventListener('focus', resetButtonOnFocus);
+          };
+          window.addEventListener('focus', resetButtonOnFocus);
         } catch (err) {
           console.error("Failed to load Google client scripts:", err);
           alert("Failed to load Google authorization client. Please check your internet connection.");
