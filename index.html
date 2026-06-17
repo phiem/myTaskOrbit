@@ -282,32 +282,6 @@
             </div>
           </div>
         </div>
-
-        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.25rem;">
-          <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <input type="checkbox" id="autosave-gdrive-enable" style="width: 1.15rem; height: 1.15rem; accent-color: var(--accent-primary); cursor: pointer;">
-            <label for="autosave-gdrive-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Also write backup to Google Drive</label>
-          </div>
-          
-          <div id="autosave-gdrive-selection" style="display: none; flex-direction: column; gap: 0.75rem; margin-left: 1.9rem; margin-top: 0.25rem; padding: 0.85rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px;">
-            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-              <label for="gdrive-client-id" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Google OAuth Client ID</label>
-              <input type="text" id="gdrive-client-id" placeholder="Enter Client ID..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-              <label for="gdrive-api-key" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Google API Key (Optional)</label>
-              <input type="password" id="gdrive-api-key" placeholder="Enter API Key (Optional)..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.25rem;">
-              <button type="button" class="btn btn-secondary" id="gdrive-auth-btn" style="font-size: 0.8rem; padding: 0.45rem 0.9rem; border-radius: var(--radius-sm);">
-                Authorize Google Drive
-              </button>
-              <div id="gdrive-auth-status" style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">
-                Not Authenticated
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="modal-footer" style="justify-content: flex-end; gap: 0.75rem;">
         <button type="button" class="btn btn-secondary" id="autosave-cancel-btn">Cancel</button>

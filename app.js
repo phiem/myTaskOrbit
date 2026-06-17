@@ -20,10 +20,6 @@ let tickerInterval = null;
 // Repeating chime interval
 let chimeRepeatInterval = null;
 
-// Google Drive authentication state
-let gdriveToken = null;
-let gdriveTokenExpiry = 0;
-
 // Initialize Application
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
@@ -51,15 +47,8 @@ function loadState() {
         state.autosave = {
           enabled: true,
           fileEnabled: false,
-          folderName: '',
-          gdriveEnabled: false,
-          gdriveClientId: '',
-          gdriveApiKey: ''
+          folderName: ''
         };
-      } else {
-        if (state.autosave.gdriveEnabled === undefined) state.autosave.gdriveEnabled = false;
-        if (state.autosave.gdriveClientId === undefined) state.autosave.gdriveClientId = '';
-        if (state.autosave.gdriveApiKey === undefined) state.autosave.gdriveApiKey = '';
       }
       
       // Ensure timer remaining states are updated based on elapsed time if they were running
@@ -100,10 +89,7 @@ function createDefaultBoard() {
   state.autosave = {
     enabled: true,
     fileEnabled: false,
-    folderName: '',
-    gdriveEnabled: false,
-    gdriveClientId: '',
-    gdriveApiKey: ''
+    folderName: ''
   };
   state.lists = [
     {
@@ -345,15 +331,9 @@ function initEventListeners() {
       e.preventDefault();
       
       const wasFileEnabled = state.autosave ? state.autosave.fileEnabled : false;
-      const gdriveCheckbox = document.getElementById('autosave-gdrive-enable');
-      const gdriveClientIdInput = document.getElementById('gdrive-client-id');
-      const gdriveApiKeyInput = document.getElementById('gdrive-api-key');
       
       state.autosave.enabled = enableCheckbox.checked;
       state.autosave.fileEnabled = fileCheckbox.checked;
-      state.autosave.gdriveEnabled = gdriveCheckbox.checked;
-      state.autosave.gdriveClientId = gdriveClientIdInput.value.trim();
-      state.autosave.gdriveApiKey = gdriveApiKeyInput.value.trim();
 
       // Handle folder handle cleaning if they disabled file autosave
       if (!state.autosave.fileEnabled) {
@@ -363,17 +343,6 @@ function initEventListeners() {
         // If they enabled file autosave but haven't selected a folder yet, alert them
         alert("Please select a folder location for file autosave.");
         return;
-      }
-
-      // Check Google Drive configuration
-      if (state.autosave.gdriveEnabled) {
-        if (!state.autosave.gdriveClientId) {
-          alert("Please enter a Google OAuth Client ID for Google Drive autosave.");
-          return;
-        }
-        if (!gdriveToken || Date.now() >= gdriveTokenExpiry) {
-          alert("Settings saved. Don't forget to click 'Authorize Google Drive' to connect your account.");
-        }
       }
 
       saveState();
@@ -2082,7 +2051,6 @@ async function clearFolderHandle() {
 }
 
 // Initialize the autosave mechanisms
-// Initialize the autosave mechanisms
 async function initAutosave() {
   if (!state.autosave) return;
 
@@ -2093,17 +2061,6 @@ async function initAutosave() {
     const folderInfo = document.getElementById('autosave-folder-info');
     if (folderInfo) {
       folderInfo.textContent = `Folder: ${handle.name}`;
-    }
-  }
-
-  // 1.5 Restore GDrive session storage token if active
-  const storedToken = sessionStorage.getItem('taskorbit_gdrive_token');
-  const storedExpiry = sessionStorage.getItem('taskorbit_gdrive_token_expiry');
-  if (storedToken && storedExpiry) {
-    const expiry = parseInt(storedExpiry);
-    if (Date.now() < expiry) {
-      gdriveToken = storedToken;
-      gdriveTokenExpiry = expiry;
     }
   }
 
@@ -2160,38 +2117,22 @@ async function triggerAutosave() {
           await writable.write(JSON.stringify(state, null, 2));
           await writable.close();
           console.log("Autosave: Wrote session file to local folder.");
+          updateAutosaveUI();
         } else {
           console.warn("Autosave skipped: Write permission not granted.");
+          updateAutosaveUI();
         }
       } catch (err) {
         console.error("Autosave file write failed:", err);
+        updateAutosaveUI();
       }
     } else {
       console.warn("Autosave skipped: No local directory handle found.");
+      updateAutosaveUI();
     }
+  } else {
+    updateAutosaveUI();
   }
-
-  // Save to Google Drive if enabled
-  if (state.autosave.gdriveEnabled) {
-    if (gdriveToken && Date.now() < gdriveTokenExpiry) {
-      try {
-        let fileId = await findGDriveFile(gdriveToken);
-        if (fileId) {
-          await updateGDriveFile(gdriveToken, fileId, state);
-          console.log("Autosave: Updated session backup on Google Drive.");
-        } else {
-          await createGDriveFile(gdriveToken, state);
-          console.log("Autosave: Created new session backup on Google Drive.");
-        }
-      } catch (err) {
-        console.error("Autosave Google Drive write failed:", err);
-      }
-    } else {
-      console.warn("Autosave skipped Google Drive: Not authenticated or token expired.");
-    }
-  }
-
-  updateAutosaveUI();
 }
 
 // Update the header button text and status dot dynamically
@@ -2206,25 +2147,7 @@ async function updateAutosaveUI() {
     return;
   }
 
-  const isFileEnabled = !!state.autosave.fileEnabled;
-  const isGDriveEnabled = !!state.autosave.gdriveEnabled;
-
-  if (isFileEnabled && isGDriveEnabled) {
-    const handle = await loadFolderHandle();
-    const isFileAuthorized = handle && (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
-    const isGDriveAuthorized = gdriveToken && Date.now() < gdriveTokenExpiry;
-
-    if (isFileAuthorized && isGDriveAuthorized) {
-      statusText.textContent = 'Autosave: Active';
-      statusDot.className = 'autosave-status-dot success';
-    } else if (!isFileAuthorized && !isGDriveAuthorized) {
-      statusText.textContent = 'Autosave: Auth Needed';
-      statusDot.className = 'autosave-status-dot error';
-    } else {
-      statusText.textContent = 'Autosave: Partial Auth';
-      statusDot.className = 'autosave-status-dot warning';
-    }
-  } else if (isFileEnabled) {
+  if (state.autosave.fileEnabled) {
     const handle = await loadFolderHandle();
     if (handle) {
       const permission = await handle.queryPermission({ mode: 'readwrite' });
@@ -2239,15 +2162,6 @@ async function updateAutosaveUI() {
       statusText.textContent = 'Autosave: Config Error';
       statusDot.className = 'autosave-status-dot error';
     }
-  } else if (isGDriveEnabled) {
-    const isGDriveAuthorized = gdriveToken && Date.now() < gdriveTokenExpiry;
-    if (isGDriveAuthorized) {
-      statusText.textContent = 'Autosave: Active';
-      statusDot.className = 'autosave-status-dot success';
-    } else {
-      statusText.textContent = 'Autosave: Auth Needed';
-      statusDot.className = 'autosave-status-dot warning';
-    }
   } else {
     statusText.textContent = 'Autosave: LocalStorage';
     statusDot.className = 'autosave-status-dot success';
@@ -2261,34 +2175,20 @@ function openAutosaveModal() {
 
   const enableCheckbox = document.getElementById('autosave-enable');
   const fileCheckbox = document.getElementById('autosave-file-enable');
-  const gdriveCheckbox = document.getElementById('autosave-gdrive-enable');
   const folderSelection = document.getElementById('autosave-folder-selection');
   const folderInfo = document.getElementById('autosave-folder-info');
-  const gdriveSelection = document.getElementById('autosave-gdrive-selection');
-  const gdriveClientIdInput = document.getElementById('gdrive-client-id');
-  const gdriveApiKeyInput = document.getElementById('gdrive-api-key');
 
-  if (enableCheckbox && fileCheckbox && gdriveCheckbox && folderSelection && gdriveSelection) {
+  if (enableCheckbox && fileCheckbox && folderSelection && folderInfo) {
     enableCheckbox.checked = !!state.autosave.enabled;
     fileCheckbox.checked = !!state.autosave.fileEnabled;
-    gdriveCheckbox.checked = !!state.autosave.gdriveEnabled;
-    
     folderSelection.style.display = state.autosave.fileEnabled ? 'flex' : 'none';
-    gdriveSelection.style.display = state.autosave.gdriveEnabled ? 'flex' : 'none';
     folderInfo.textContent = state.autosave.folderName ? `Folder: ${state.autosave.folderName}` : 'No folder selected';
 
-    if (gdriveClientIdInput) gdriveClientIdInput.value = state.autosave.gdriveClientId || '';
-    if (gdriveApiKeyInput) gdriveApiKeyInput.value = state.autosave.gdriveApiKey || '';
-
-    updateGDriveStatusUI();
-
-    // Toggle panel display based on checkbox status
-    fileCheckbox.onchange = () => {
+    // Toggle folder picker visibility based on checkbox status
+    const toggleFolderDisplay = () => {
       folderSelection.style.display = fileCheckbox.checked ? 'flex' : 'none';
     };
-    gdriveCheckbox.onchange = () => {
-      gdriveSelection.style.display = gdriveCheckbox.checked ? 'flex' : 'none';
-    };
+    fileCheckbox.onchange = toggleFolderDisplay;
 
     // Check directory picker browser support
     const selectBtn = document.getElementById('autosave-select-folder-btn');
@@ -2301,172 +2201,7 @@ function openAutosaveModal() {
         selectBtn.disabled = false;
       }
     }
-
-    // Google Drive Authorize Button binding
-    const gdriveAuthBtn = document.getElementById('gdrive-auth-btn');
-    if (gdriveAuthBtn) {
-      gdriveAuthBtn.onclick = async (e) => {
-        e.preventDefault();
-        const clientId = gdriveClientIdInput.value.trim();
-        if (!clientId) {
-          alert("Please enter a Google OAuth Client ID first.");
-          return;
-        }
-
-        try {
-          gdriveAuthBtn.disabled = true;
-          gdriveAuthBtn.textContent = 'Authorizing...';
-          await loadGapiAndGsi();
-          
-          const tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: clientId,
-            scope: 'https://www.googleapis.com/auth/drive.file',
-            callback: (tokenResponse) => {
-              gdriveAuthBtn.disabled = false;
-              gdriveAuthBtn.textContent = 'Authorize Google Drive';
-              
-              if (tokenResponse.error) {
-                console.error("GDrive authentication failed:", tokenResponse.error);
-                alert(`Authentication failed: ${tokenResponse.error_description || tokenResponse.error}`);
-                return;
-              }
-              
-              gdriveToken = tokenResponse.access_token;
-              gdriveTokenExpiry = Date.now() + (parseInt(tokenResponse.expires_in) || 3600) * 1000;
-              
-              sessionStorage.setItem('taskorbit_gdrive_token', gdriveToken);
-              sessionStorage.setItem('taskorbit_gdrive_token_expiry', String(gdriveTokenExpiry));
-              
-              updateGDriveStatusUI();
-              updateAutosaveUI();
-            },
-          });
-          
-          tokenClient.requestAccessToken();
-          
-          // Fallback: GSI does not invoke the callback if the user closes the popup.
-          // We listen for the window gaining focus to reset the button state.
-          const resetButtonOnFocus = () => {
-            setTimeout(() => {
-              if (gdriveAuthBtn.textContent === 'Authorizing...') {
-                gdriveAuthBtn.disabled = false;
-                gdriveAuthBtn.textContent = 'Authorize Google Drive';
-              }
-            }, 1000);
-            window.removeEventListener('focus', resetButtonOnFocus);
-          };
-          window.addEventListener('focus', resetButtonOnFocus);
-        } catch (err) {
-          console.error("Failed to load Google client scripts:", err);
-          alert("Failed to load Google authorization client. Please check your internet connection.");
-          gdriveAuthBtn.disabled = false;
-          gdriveAuthBtn.textContent = 'Authorize Google Drive';
-        }
-      };
-    }
   }
 
   modal.showModal();
-}
-
-// Google Drive integration helpers
-function loadGapiAndGsi() {
-  return new Promise((resolve, reject) => {
-    if (window.google && window.google.accounts) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Drive client script."));
-    document.body.appendChild(script);
-  });
-}
-
-function updateGDriveStatusUI() {
-  const gdriveAuthStatus = document.getElementById('gdrive-auth-status');
-  if (!gdriveAuthStatus) return;
-
-  if (gdriveToken && Date.now() < gdriveTokenExpiry) {
-    gdriveAuthStatus.textContent = 'Authenticated';
-    gdriveAuthStatus.style.color = 'var(--accent-success)';
-  } else {
-    gdriveAuthStatus.textContent = 'Not Authenticated';
-    gdriveAuthStatus.style.color = 'var(--text-muted)';
-  }
-}
-
-async function findGDriveFile(token) {
-  const query = encodeURIComponent("name='taskorbit-session-autosave.json' and trashed=false");
-  const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id)`,
-    {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to query Google Drive: ${response.statusText}`);
-  }
-  const data = await response.json();
-  if (data.files && data.files.length > 0) {
-    return data.files[0].id;
-  }
-  return null;
-}
-
-async function updateGDriveFile(token, fileId, stateData) {
-  const response = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(stateData, null, 2)
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to update Google Drive file: ${response.statusText}`);
-  }
-  return await response.json();
-}
-
-async function createGDriveFile(token, stateData) {
-  const boundary = 'taskorbit_gdrive_upload';
-  const metadata = {
-    name: 'taskorbit-session-autosave.json',
-    mimeType: 'application/json'
-  };
-  const body = [
-    `\r\n--${boundary}\r\n`,
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n`,
-    JSON.stringify(metadata),
-    `\r\n--${boundary}\r\n`,
-    `Content-Type: application/json\r\n\r\n`,
-    JSON.stringify(stateData, null, 2),
-    `\r\n--${boundary}--`
-  ].join('');
-
-  const response = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`
-      },
-      body: body
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to create Google Drive file: ${response.statusText}`);
-  }
-  return await response.json();
 }
