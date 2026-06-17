@@ -264,7 +264,7 @@
       <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem 1.75rem;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <input type="checkbox" id="autosave-enable" style="width: 1.15rem; height: 1.15rem; accent-color: var(--accent-primary); cursor: pointer;">
-          <label for="autosave-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Enable Periodic Autosave (every 5 minutes)</label>
+          <label for="autosave-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Enable Periodic Autosave (every 15 minutes)</label>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.25rem;">
@@ -279,6 +279,24 @@
             </button>
             <div id="autosave-folder-info" style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; font-style: italic;">
               No folder selected
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <input type="checkbox" id="autosave-jsonbin-enable" style="width: 1.15rem; height: 1.15rem; accent-color: var(--accent-primary); cursor: pointer;">
+            <label for="autosave-jsonbin-enable" style="font-weight: 500; cursor: pointer; font-size: 0.95rem; user-select: none;">Also write backup to JSONBin.io</label>
+          </div>
+          
+          <div id="autosave-jsonbin-selection" style="display: none; flex-direction: column; gap: 0.75rem; margin-left: 1.9rem; margin-top: 0.25rem; padding: 0.85rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label for="jsonbin-api-key" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">JSONBin.io Master Key</label>
+              <input type="password" id="jsonbin-api-key" placeholder="Enter Master Key..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label for="jsonbin-bin-id" style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Bin ID (Optional, will auto-create if empty)</label>
+              <input type="text" id="jsonbin-bin-id" placeholder="Enter Bin ID (Optional)..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; color: #fff; font-size: 0.85rem;">
             </div>
           </div>
         </div>

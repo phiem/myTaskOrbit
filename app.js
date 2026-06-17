@@ -47,8 +47,15 @@ function loadState() {
         state.autosave = {
           enabled: true,
           fileEnabled: false,
-          folderName: ''
+          folderName: '',
+          jsonbinEnabled: false,
+          jsonbinApiKey: '',
+          jsonbinBinId: ''
         };
+      } else {
+        if (state.autosave.jsonbinEnabled === undefined) state.autosave.jsonbinEnabled = false;
+        if (state.autosave.jsonbinApiKey === undefined) state.autosave.jsonbinApiKey = '';
+        if (state.autosave.jsonbinBinId === undefined) state.autosave.jsonbinBinId = '';
       }
       
       // Ensure timer remaining states are updated based on elapsed time if they were running
@@ -89,7 +96,10 @@ function createDefaultBoard() {
   state.autosave = {
     enabled: true,
     fileEnabled: false,
-    folderName: ''
+    folderName: '',
+    jsonbinEnabled: false,
+    jsonbinApiKey: '',
+    jsonbinBinId: ''
   };
   state.lists = [
     {
@@ -331,9 +341,15 @@ function initEventListeners() {
       e.preventDefault();
       
       const wasFileEnabled = state.autosave ? state.autosave.fileEnabled : false;
+      const jsonbinCheckbox = document.getElementById('autosave-jsonbin-enable');
+      const jsonbinApiKeyInput = document.getElementById('jsonbin-api-key');
+      const jsonbinBinIdInput = document.getElementById('jsonbin-bin-id');
       
       state.autosave.enabled = enableCheckbox.checked;
       state.autosave.fileEnabled = fileCheckbox.checked;
+      state.autosave.jsonbinEnabled = jsonbinCheckbox.checked;
+      state.autosave.jsonbinApiKey = jsonbinApiKeyInput.value.trim();
+      state.autosave.jsonbinBinId = jsonbinBinIdInput.value.trim();
 
       // Handle folder handle cleaning if they disabled file autosave
       if (!state.autosave.fileEnabled) {
@@ -343,6 +359,14 @@ function initEventListeners() {
         // If they enabled file autosave but haven't selected a folder yet, alert them
         alert("Please select a folder location for file autosave.");
         return;
+      }
+
+      // Check JSONBin.io configuration
+      if (state.autosave.jsonbinEnabled) {
+        if (!state.autosave.jsonbinApiKey) {
+          alert("Please enter a JSONBin.io Master Key for cloud autosave.");
+          return;
+        }
       }
 
       saveState();
@@ -2088,13 +2112,13 @@ async function initAutosave() {
   }
 }
 
-// Start the 5 minute periodic timer
+// Start the 15 minute periodic timer
 function startAutosaveTimer() {
   if (autosaveInterval) clearInterval(autosaveInterval);
   
   autosaveInterval = setInterval(() => {
     triggerAutosave();
-  }, 5 * 60 * 1000); // 5 minutes
+  }, 15 * 60 * 1000); // 15 minutes
 }
 
 // Run the autosave action
@@ -2117,22 +2141,47 @@ async function triggerAutosave() {
           await writable.write(JSON.stringify(state, null, 2));
           await writable.close();
           console.log("Autosave: Wrote session file to local folder.");
-          updateAutosaveUI();
         } else {
           console.warn("Autosave skipped: Write permission not granted.");
-          updateAutosaveUI();
         }
       } catch (err) {
         console.error("Autosave file write failed:", err);
-        updateAutosaveUI();
       }
     } else {
       console.warn("Autosave skipped: No local directory handle found.");
-      updateAutosaveUI();
     }
-  } else {
-    updateAutosaveUI();
   }
+
+  // Save to JSONBin.io if enabled
+  if (state.autosave.jsonbinEnabled) {
+    if (state.autosave.jsonbinApiKey) {
+      try {
+        if (state.autosave.jsonbinBinId) {
+          // Update existing bin
+          await updateJSONBin(state.autosave.jsonbinBinId, state.autosave.jsonbinApiKey, state);
+          console.log("Autosave: Updated session backup on JSONBin.io.");
+        } else {
+          // Create new bin
+          const binId = await createJSONBin(state.autosave.jsonbinApiKey, state);
+          state.autosave.jsonbinBinId = binId;
+          saveState();
+          
+          // Update modal input field value in real time if modal is open
+          const binIdInput = document.getElementById('jsonbin-bin-id');
+          if (binIdInput) {
+            binIdInput.value = binId;
+          }
+          console.log("Autosave: Created new session backup on JSONBin.io with ID: " + binId);
+        }
+      } catch (err) {
+        console.error("Autosave JSONBin.io sync failed:", err);
+      }
+    } else {
+      console.warn("Autosave skipped JSONBin.io: No Master Key provided.");
+    }
+  }
+
+  updateAutosaveUI();
 }
 
 // Update the header button text and status dot dynamically
@@ -2147,7 +2196,25 @@ async function updateAutosaveUI() {
     return;
   }
 
-  if (state.autosave.fileEnabled) {
+  const isFileEnabled = !!state.autosave.fileEnabled;
+  const isJsonbinEnabled = !!state.autosave.jsonbinEnabled;
+
+  if (isFileEnabled && isJsonbinEnabled) {
+    const handle = await loadFolderHandle();
+    const isFileAuthorized = handle && (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
+    const isJsonbinAuthorized = !!state.autosave.jsonbinApiKey;
+
+    if (isFileAuthorized && isJsonbinAuthorized) {
+      statusText.textContent = 'Autosave: Active';
+      statusDot.className = 'autosave-status-dot success';
+    } else if (!isFileAuthorized && !isJsonbinAuthorized) {
+      statusText.textContent = 'Autosave: Auth Needed';
+      statusDot.className = 'autosave-status-dot error';
+    } else {
+      statusText.textContent = 'Autosave: Partial Auth';
+      statusDot.className = 'autosave-status-dot warning';
+    }
+  } else if (isFileEnabled) {
     const handle = await loadFolderHandle();
     if (handle) {
       const permission = await handle.queryPermission({ mode: 'readwrite' });
@@ -2162,6 +2229,14 @@ async function updateAutosaveUI() {
       statusText.textContent = 'Autosave: Config Error';
       statusDot.className = 'autosave-status-dot error';
     }
+  } else if (isJsonbinEnabled) {
+    if (state.autosave.jsonbinApiKey) {
+      statusText.textContent = 'Autosave: Active';
+      statusDot.className = 'autosave-status-dot success';
+    } else {
+      statusText.textContent = 'Autosave: Auth Needed';
+      statusDot.className = 'autosave-status-dot warning';
+    }
   } else {
     statusText.textContent = 'Autosave: LocalStorage';
     statusDot.className = 'autosave-status-dot success';
@@ -2175,20 +2250,33 @@ function openAutosaveModal() {
 
   const enableCheckbox = document.getElementById('autosave-enable');
   const fileCheckbox = document.getElementById('autosave-file-enable');
+  const jsonbinCheckbox = document.getElementById('autosave-jsonbin-enable');
   const folderSelection = document.getElementById('autosave-folder-selection');
   const folderInfo = document.getElementById('autosave-folder-info');
+  const jsonbinSelection = document.getElementById('autosave-jsonbin-selection');
+  const jsonbinApiKeyInput = document.getElementById('jsonbin-api-key');
+  const jsonbinBinIdInput = document.getElementById('jsonbin-bin-id');
 
-  if (enableCheckbox && fileCheckbox && folderSelection && folderInfo) {
+  if (enableCheckbox && fileCheckbox && jsonbinCheckbox && folderSelection && jsonbinSelection) {
     enableCheckbox.checked = !!state.autosave.enabled;
     fileCheckbox.checked = !!state.autosave.fileEnabled;
+    jsonbinCheckbox.checked = !!state.autosave.jsonbinEnabled;
+    
     folderSelection.style.display = state.autosave.fileEnabled ? 'flex' : 'none';
+    jsonbinSelection.style.display = state.autosave.jsonbinEnabled ? 'flex' : 'none';
     folderInfo.textContent = state.autosave.folderName ? `Folder: ${state.autosave.folderName}` : 'No folder selected';
 
+    if (jsonbinApiKeyInput) jsonbinApiKeyInput.value = state.autosave.jsonbinApiKey || '';
+    if (jsonbinBinIdInput) jsonbinBinIdInput.value = state.autosave.jsonbinBinId || '';
+
     // Toggle folder picker visibility based on checkbox status
-    const toggleFolderDisplay = () => {
+    fileCheckbox.onchange = () => {
       folderSelection.style.display = fileCheckbox.checked ? 'flex' : 'none';
     };
-    fileCheckbox.onchange = toggleFolderDisplay;
+    // Toggle JSONBin visibility based on checkbox status
+    jsonbinCheckbox.onchange = () => {
+      jsonbinSelection.style.display = jsonbinCheckbox.checked ? 'flex' : 'none';
+    };
 
     // Check directory picker browser support
     const selectBtn = document.getElementById('autosave-select-folder-btn');
@@ -2204,4 +2292,40 @@ function openAutosaveModal() {
   }
 
   modal.showModal();
+}
+
+// JSONBin.io integration helpers
+async function createJSONBin(apiKey, stateData) {
+  const response = await fetch('https://api.jsonbin.io/v3/b', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': apiKey,
+      'X-Bin-Private': 'true',
+      'X-Bin-Name': 'taskorbit-session-autosave.json'
+    },
+    body: JSON.stringify(stateData)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.metadata.id;
+}
+
+async function updateJSONBin(binId, apiKey, stateData) {
+  const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': apiKey
+    },
+    body: JSON.stringify(stateData)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  return await response.json();
 }
