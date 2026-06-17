@@ -112,9 +112,16 @@
           <input type="text" id="modal-task-title" required placeholder="What needs to be done?">
         </div>
 
-        <div class="form-group">
-          <label for="modal-task-note">Notes</label>
+        <div class="form-group" style="position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <label for="modal-task-note" style="margin-bottom: 0;">Notes</label>
+            <div style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.25); padding: 2px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.06);">
+              <button type="button" id="modal-note-edit-tab" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); background: var(--bg-tertiary); border: none; color: #fff; cursor: pointer;">Edit</button>
+              <button type="button" id="modal-note-preview-tab" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); background: transparent; border: none; color: var(--text-muted); cursor: pointer;">Preview</button>
+            </div>
+          </div>
           <textarea id="modal-task-note" rows="4" placeholder="Add some details..."></textarea>
+          <div id="modal-task-note-preview" class="task-card-note" style="display: none; min-height: 94px; padding: 0.5rem 0.75rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-sm); overflow-y: auto; max-height: 200px; font-size: 0.85rem; line-height: 1.4; color: var(--text-main); white-space: normal;"></div>
         </div>
 
         <div class="form-grid">

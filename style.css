@@ -1886,4 +1886,51 @@ html, body {
   opacity: 0.7;
 }
 
+/* Task note markdown support styling */
+.task-card-note p {
+  margin: 0 0 0.4rem 0;
+}
+.task-card-note p:last-child {
+  margin-bottom: 0;
+}
+.task-card-note ul, .task-card-note ol {
+  margin: 0 0 0.4rem 0;
+  padding-left: 1rem;
+}
+.task-card-note ul:last-child, .task-card-note ol:last-child {
+  margin-bottom: 0;
+}
+.task-card-note li {
+  margin-bottom: 0.15rem;
+}
+.task-card-note strong {
+  font-weight: 700;
+  color: var(--text-main);
+}
+.task-card-note em {
+  font-style: italic;
+}
+.task-card-note table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.task-card-note th, .task-card-note td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+.task-card-note th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  color: var(--text-main);
+}
+.task-card-note tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
 

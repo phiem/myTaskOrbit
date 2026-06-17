@@ -281,6 +281,40 @@ function initEventListeners() {
     }
   });
 
+  // Edit/Preview tab switching for task notes inside details modal
+  const editTab = document.getElementById('modal-note-edit-tab');
+  const previewTab = document.getElementById('modal-note-preview-tab');
+  const noteTextarea = document.getElementById('modal-task-note');
+  const notePreviewDiv = document.getElementById('modal-task-note-preview');
+
+  if (editTab && previewTab && noteTextarea && notePreviewDiv) {
+    editTab.addEventListener('click', () => {
+      editTab.style.background = 'var(--bg-tertiary)';
+      editTab.style.color = '#fff';
+      
+      previewTab.style.background = 'transparent';
+      previewTab.style.color = 'var(--text-muted)';
+      
+      noteTextarea.style.display = 'block';
+      notePreviewDiv.style.display = 'none';
+    });
+
+    previewTab.addEventListener('click', () => {
+      previewTab.style.background = 'var(--bg-tertiary)';
+      previewTab.style.color = '#fff';
+      
+      editTab.style.background = 'transparent';
+      editTab.style.color = 'var(--text-muted)';
+      
+      noteTextarea.style.display = 'none';
+      notePreviewDiv.style.display = 'block';
+      
+      // Update preview content with rendered markdown
+      const noteText = noteTextarea.value || '';
+      notePreviewDiv.innerHTML = noteText.trim() ? renderMarkdown(noteText) : '<span style="font-style:italic; opacity:0.4;">No details provided</span>';
+    });
+  }
+
   // Menu Popover Event Listeners
   const menuEditTask = document.getElementById('menu-edit-task');
   const menuDeleteTask = document.getElementById('menu-delete-task');
@@ -857,8 +891,10 @@ function createTaskCardElement(task, listId) {
   const note = document.createElement('div');
   note.className = 'task-card-note';
   note.contentEditable = true;
-  note.textContent = task.note || 'Add details...';
-  if (!task.note) {
+  if (task.note) {
+    note.innerHTML = renderMarkdown(task.note);
+  } else {
+    note.textContent = 'Add details...';
     note.style.fontStyle = 'italic';
     note.style.opacity = '0.4';
   }
@@ -948,16 +984,21 @@ function createTaskCardElement(task, listId) {
 
   // Note edit inline focus & blur
   note.addEventListener('focus', () => {
-    if (note.textContent === 'Add details...') {
+    if (task.note) {
+      note.innerText = task.note;
+    } else if (note.textContent === 'Add details...') {
       note.textContent = '';
       note.style.fontStyle = 'normal';
       note.style.opacity = '1';
     }
   });
   note.addEventListener('blur', () => {
-    const val = note.textContent.trim();
+    const val = note.innerText.trim();
     if (val && val !== 'Add details...') {
       task.note = val;
+      note.innerHTML = renderMarkdown(val);
+      note.style.fontStyle = 'normal';
+      note.style.opacity = '1';
     } else {
       task.note = '';
       note.textContent = 'Add details...';
@@ -1576,6 +1617,24 @@ function openTaskModal(taskId) {
   document.getElementById('modal-task-title').value = foundTask.title;
   document.getElementById('modal-task-note').value = foundTask.note || '';
   document.getElementById('modal-task-due').value = foundTask.dueDate || '';
+
+  // Reset Edit/Preview notes tabs inside openTaskModal
+  const editTab = document.getElementById('modal-note-edit-tab');
+  const previewTab = document.getElementById('modal-note-preview-tab');
+  const noteTextarea = document.getElementById('modal-task-note');
+  const notePreviewDiv = document.getElementById('modal-task-note-preview');
+
+  if (editTab && previewTab && noteTextarea && notePreviewDiv) {
+    editTab.style.background = 'var(--bg-tertiary)';
+    editTab.style.color = '#fff';
+    
+    previewTab.style.background = 'transparent';
+    previewTab.style.color = 'var(--text-muted)';
+    
+    noteTextarea.style.display = 'block';
+    notePreviewDiv.style.display = 'none';
+    notePreviewDiv.innerHTML = '';
+  }
 
   // Timer parsing values
   const timer = foundTask.timer || { duration: 0 };
@@ -2558,4 +2617,126 @@ async function updateJSONBin(binId, apiKey, stateData) {
     throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
   }
   return await response.json();
+}
+
+// Markdown Parser Helper
+function renderMarkdown(text) {
+  if (!text) return '';
+  
+  // Escape HTML entities to prevent layout breaks / raw HTML injection
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Process bold & italics
+  // Bold: **text** or __text__
+  html = html.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+  // Italics: *text* or _text_
+  html = html.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+
+  // Split into lines for list and table parsing
+  const lines = html.split('\n');
+  let result = [];
+  let inList = false;
+  let listType = ''; // 'ul' or 'ol'
+  let inTable = false;
+  let tableHeaders = [];
+  let tableRows = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Check for Table Row
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (/^[|:\-\s]+$/.test(line)) {
+        // Separator row, skip
+        continue;
+      }
+      
+      const cells = line.split('|').slice(1, -1).map(c => c.trim());
+      
+      if (!inTable) {
+        inTable = true;
+        tableHeaders = cells;
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else {
+      if (inTable) {
+        result.push(buildTableHTML(tableHeaders, tableRows));
+        inTable = false;
+        tableHeaders = [];
+        tableRows = [];
+      }
+    }
+
+    // Check for Lists
+    const ulMatch = line.match(/^([\-\*\+])\s+(.*)$/);
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+
+    if (ulMatch) {
+      if (!inList || listType !== 'ul') {
+        if (inList) result.push(`</${listType}>`);
+        result.push('<ul>');
+        inList = true;
+        listType = 'ul';
+      }
+      result.push(`<li>${ulMatch[2]}</li>`);
+      continue;
+    } else if (olMatch) {
+      if (!inList || listType !== 'ol') {
+        if (inList) result.push(`</${listType}>`);
+        result.push('<ol>');
+        inList = true;
+        listType = 'ol';
+      }
+      result.push(`<li>${olMatch[2]}</li>`);
+      continue;
+    } else {
+      if (inList) {
+        result.push(`</${listType}>`);
+        inList = false;
+        listType = '';
+      }
+    }
+
+    // Paragraph text or line breaks
+    if (line === '') {
+      result.push('<br>');
+    } else {
+      result.push(`<p>${line}</p>`);
+    }
+  }
+
+  // Cleanup remaining open tags
+  if (inTable) {
+    result.push(buildTableHTML(tableHeaders, tableRows));
+  }
+  if (inList) {
+    result.push(`</${listType}>`);
+  }
+
+  return result.join('\n');
+}
+
+function buildTableHTML(headers, rows) {
+  let html = '<table><thead><tr>';
+  headers.forEach(h => {
+    html += `<th>${h}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  
+  // Pad row cells if they don't match the header count
+  rows.forEach(r => {
+    html += '<tr>';
+    for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+      const cellVal = r[colIdx] !== undefined ? r[colIdx] : '';
+      html += `<td>${cellVal}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
 }
