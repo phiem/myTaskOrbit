@@ -888,19 +888,60 @@ function createTaskCardElement(task, listId) {
   titleText.title = "Double click card to edit details";
   titleText.textContent = task.title;
 
+  const isComplexNote = task.note && (
+    task.note.length > 80 || 
+    task.note.includes('\n') || 
+    task.note.includes('|') ||
+    task.note.includes('- ') ||
+    task.note.includes('* ')
+  );
+
+  const noteContainer = document.createElement('div');
+  noteContainer.className = 'task-card-note-container';
+
   const note = document.createElement('div');
   note.className = 'task-card-note';
   note.contentEditable = true;
+
   if (task.note) {
     note.innerHTML = renderMarkdown(task.note);
+    if (isComplexNote) {
+      note.classList.add('collapsed');
+    }
   } else {
     note.textContent = 'Add details...';
     note.style.fontStyle = 'italic';
     note.style.opacity = '0.4';
   }
+  
+  noteContainer.appendChild(note);
+
+  let toggleBtn = null;
+  if (isComplexNote) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.className = 'task-note-toggle-btn';
+    toggleBtn.innerHTML = `
+      <span>Show More</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 0.65rem; height: 0.65rem; transition: transform 0.2s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    `;
+    
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isCollapsed = note.classList.toggle('collapsed');
+      if (isCollapsed) {
+        toggleBtn.querySelector('span').textContent = 'Show More';
+        toggleBtn.querySelector('svg').style.transform = 'rotate(0deg)';
+      } else {
+        toggleBtn.querySelector('span').textContent = 'Show Less';
+        toggleBtn.querySelector('svg').style.transform = 'rotate(180deg)';
+      }
+    });
+    
+    noteContainer.appendChild(toggleBtn);
+  }
 
   contentArea.appendChild(titleText);
-  contentArea.appendChild(note);
+  contentArea.appendChild(noteContainer);
   mainRow.appendChild(contentArea);
 
   // Options Menu Button (Ellipsis icon)
@@ -984,6 +1025,10 @@ function createTaskCardElement(task, listId) {
 
   // Note edit inline focus & blur
   note.addEventListener('focus', () => {
+    note.classList.remove('collapsed');
+    if (toggleBtn) {
+      toggleBtn.style.display = 'none';
+    }
     if (task.note) {
       note.innerText = task.note;
     } else if (note.textContent === 'Add details...') {
@@ -994,18 +1039,52 @@ function createTaskCardElement(task, listId) {
   });
   note.addEventListener('blur', () => {
     const val = note.innerText.trim();
+    const wasComplex = isComplexNote;
+    
     if (val && val !== 'Add details...') {
       task.note = val;
       note.innerHTML = renderMarkdown(val);
       note.style.fontStyle = 'normal';
       note.style.opacity = '1';
+      
+      const newComplex = (
+        val.length > 80 || 
+        val.includes('\n') || 
+        val.includes('|') ||
+        val.includes('- ') ||
+        val.includes('* ')
+      );
+      
+      if (newComplex) {
+        note.classList.add('collapsed');
+      } else {
+        note.classList.remove('collapsed');
+      }
     } else {
       task.note = '';
       note.textContent = 'Add details...';
       note.style.fontStyle = 'italic';
       note.style.opacity = '0.4';
+      note.classList.remove('collapsed');
     }
+    
     saveState();
+
+    const newComplex = val && (
+      val.length > 80 || 
+      val.includes('\n') || 
+      val.includes('|') ||
+      val.includes('- ') ||
+      val.includes('* ')
+    );
+
+    if (!!wasComplex !== !!newComplex) {
+      renderBoard();
+    } else if (toggleBtn) {
+      toggleBtn.style.display = 'inline-flex';
+      toggleBtn.querySelector('span').textContent = 'Show More';
+      toggleBtn.querySelector('svg').style.transform = 'rotate(0deg)';
+    }
   });
 
   // Options Menu popover click

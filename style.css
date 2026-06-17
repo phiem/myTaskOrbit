@@ -1933,4 +1933,46 @@ html, body {
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* Collapsible note styling */
+.task-card-note-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 2px;
+}
+
+.task-card-note.collapsed {
+  max-height: 2.2rem; /* approximately 2 lines of text */
+  overflow: hidden;
+  position: relative;
+  /* Add subtle fade-out mask at the bottom when collapsed */
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+}
+
+.task-card-note {
+  transition: max-height 0.2s ease-out;
+}
+
+/* Toggle button styling */
+.task-note-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0;
+  width: fit-content;
+  transition: color var(--transition-fast) ease;
+  user-select: none;
+}
+
+.task-note-toggle-btn:hover {
+  color: var(--accent-primary);
+}
+
 
